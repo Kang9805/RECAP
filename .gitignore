@@ -19,6 +19,7 @@ staticfiles/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # IDE / OS
 .vscode/

@@ -1,0 +1,15 @@
+.git
+__pycache__/
+*.py[cod]
+*.log
+*.sqlite3
+*.sqlite3-journal
+media/
+staticfiles/
+.env
+.env.*
+.venv/
+venv/
+env/
+.DS_Store
+node_modules/
