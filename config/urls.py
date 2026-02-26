@@ -18,13 +18,14 @@ from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from scanner.views import ReceiptUploadView, ReceiptListView, ReceiptDetailView
+from scanner.views import ReceiptUploadView, ReceiptListView, ReceiptDetailView, receipt_delete_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', ReceiptListView.as_view(), name='receipt-list'),
     path('receipts/upload/', ReceiptUploadView.as_view(), name='receipt-upload'),
     path('receipts/<int:pk>/', ReceiptDetailView.as_view(), name='receipt-detail'),
+    path('receipts/<int:pk>/delete/', receipt_delete_view, name='receipt-delete'),
 ]
 
 if settings.DEBUG:

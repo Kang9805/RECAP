@@ -56,6 +56,26 @@
             padding: 40px;
             color: #666;
         }
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .delete-form {
+            margin: 0;
+        }
+        .btn-delete {
+            border: none;
+            background: none;
+            color: #cc0000;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            font-size: inherit;
+        }
+        .btn-delete:hover {
+            text-decoration: underline;
+        }
         a {
             color: #0066cc;
             text-decoration: none;
@@ -89,7 +109,13 @@
                     <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
                     <td>{{ receipt.items.count }}</td>
                     <td>
-                        <a href="{% url 'receipt-detail' receipt.id %}">상세보기</a>
+                        <div class="actions">
+                            <a href="{% url 'receipt-detail' receipt.id %}">상세보기</a>
+                            <form method="post" action="{% url 'receipt-delete' receipt.id %}" class="delete-form" onsubmit="return confirm('이 영수증을 삭제할까요?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-delete">삭제</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
