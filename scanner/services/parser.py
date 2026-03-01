@@ -1,5 +1,5 @@
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 
 SKIP_KEYWORDS = (
@@ -30,10 +30,22 @@ SKIP_KEYWORDS = (
 )
 
 NOISE_LINE_PATTERN = re.compile(r'^[\s\-_=*~`]+$')
+MAX_UNIT_PRICE = Decimal('99999999.99')
+MAX_QUANTITY = 999
 
 
-def _to_decimal(value: str) -> Decimal:
-    return Decimal(value.replace(',', ''))
+def _to_decimal(value: str) -> Decimal | None:
+    normalized = value.replace(',', '').strip()
+    if not normalized:
+        return None
+    try:
+        decimal_value = Decimal(normalized)
+    except InvalidOperation:
+        return None
+
+    if decimal_value < 0 or decimal_value > MAX_UNIT_PRICE:
+        return None
+    return decimal_value
 
 
 def _normalize_line(line: str) -> str:
@@ -100,9 +112,14 @@ def _extract_item_from_line(line: str) -> dict | None:
         unit_price = _to_decimal(_normalize_numeric_token(match.group('unit')))
         total_price = _to_decimal(_normalize_numeric_token(match.group('total')))
 
+        if quantity <= 0 or quantity > MAX_QUANTITY:
+            return None
+        if unit_price is None or total_price is None:
+            return None
+
         if quantity > 0 and total_price > 0:
             inferred = (total_price / quantity).quantize(Decimal('1'))
-            if inferred > 0 and abs(inferred - unit_price) > 100:
+            if inferred > 0 and inferred <= MAX_UNIT_PRICE and abs(inferred - unit_price) > 100:
                 unit_price = inferred
 
         if _is_item_name(name):
@@ -119,8 +136,15 @@ def _extract_item_from_line(line: str) -> dict | None:
         quantity = int(match.group('qty'))
         total_price = _to_decimal(_normalize_numeric_token(match.group('price')))
 
+        if quantity <= 0 or quantity > MAX_QUANTITY:
+            return None
+        if total_price is None:
+            return None
+
         if _is_item_name(name) and quantity > 0:
             unit_price = (total_price / quantity).quantize(Decimal('1'))
+            if unit_price <= 0 or unit_price > MAX_UNIT_PRICE:
+                return None
             return {
                 'name': name,
                 'quantity': quantity,
@@ -132,6 +156,8 @@ def _extract_item_from_line(line: str) -> dict | None:
     if match:
         name = match.group('name').strip()
         price = _to_decimal(_normalize_numeric_token(match.group('price')))
+        if price is None:
+            return None
 
         if _is_item_name(name):
             return {

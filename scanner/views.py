@@ -9,6 +9,10 @@ from .services.ocr import extract_text_from_receipt
 from .services.parser import parse_receipt_items
 
 
+MAX_UNIT_PRICE = Decimal('99999999.99')
+MAX_QUANTITY = 999
+
+
 class ReceiptUploadView(CreateView):
     model = Receipt
     fields = ['image']
@@ -66,8 +70,12 @@ def _parse_item_form(request):
 
     if quantity <= 0:
         raise ValueError('Quantity must be greater than 0')
+    if quantity > MAX_QUANTITY:
+        raise ValueError('Quantity is too large')
     if unit_price < 0:
         raise ValueError('Unit price must be 0 or greater')
+    if unit_price > MAX_UNIT_PRICE:
+        raise ValueError('Unit price is too large')
 
     return name, quantity, unit_price
 
