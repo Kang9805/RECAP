@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, DetailView
@@ -51,8 +53,68 @@ class ReceiptDetailView(DetailView):
     context_object_name = 'receipt'
 
 
+def _parse_item_form(request):
+    name = request.POST.get('name', '').strip()
+    quantity_raw = request.POST.get('quantity', '').strip()
+    unit_price_raw = request.POST.get('unit_price', '').strip().replace(',', '')
+
+    if not name:
+        raise ValueError('Item name is required')
+
+    quantity = int(quantity_raw)
+    unit_price = Decimal(unit_price_raw)
+
+    if quantity <= 0:
+        raise ValueError('Quantity must be greater than 0')
+    if unit_price < 0:
+        raise ValueError('Unit price must be 0 or greater')
+
+    return name, quantity, unit_price
+
+
 @require_POST
 def receipt_delete_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
     receipt.delete()
     return redirect('receipt-list')
+
+
+@require_POST
+def receipt_item_create_view(request, receipt_pk):
+    receipt = get_object_or_404(Receipt, pk=receipt_pk)
+    try:
+        name, quantity, unit_price = _parse_item_form(request)
+        ReceiptItem.objects.create(
+            receipt=receipt,
+            name=name,
+            quantity=quantity,
+            unit_price=unit_price,
+        )
+    except (ValueError, InvalidOperation):
+        pass
+
+    return redirect('receipt-detail', pk=receipt.pk)
+
+
+@require_POST
+def receipt_item_update_view(request, receipt_pk, item_pk):
+    receipt = get_object_or_404(Receipt, pk=receipt_pk)
+    item = get_object_or_404(ReceiptItem, pk=item_pk, receipt=receipt)
+    try:
+        name, quantity, unit_price = _parse_item_form(request)
+        item.name = name
+        item.quantity = quantity
+        item.unit_price = unit_price
+        item.save(update_fields=['name', 'quantity', 'unit_price'])
+    except (ValueError, InvalidOperation):
+        pass
+
+    return redirect('receipt-detail', pk=receipt.pk)
+
+
+@require_POST
+def receipt_item_delete_view(request, receipt_pk, item_pk):
+    receipt = get_object_or_404(Receipt, pk=receipt_pk)
+    item = get_object_or_404(ReceiptItem, pk=item_pk, receipt=receipt)
+    item.delete()
+    return redirect('receipt-detail', pk=receipt.pk)

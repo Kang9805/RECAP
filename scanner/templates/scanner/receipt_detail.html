@@ -82,6 +82,46 @@
             margin-top: 30px;
             text-align: center;
         }
+        .item-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn {
+            border: none;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-update {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .btn-delete {
+            background-color: #d9534f;
+            color: white;
+        }
+        .add-form {
+            margin-top: 20px;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        .add-form-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
         a {
             color: #0066cc;
             text-decoration: none;
@@ -126,22 +166,65 @@
                     <th>수량</th>
                     <th>단가</th>
                     <th>소계</th>
+                    <th>작업</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in receipt.items.all %}
                 <tr>
-                    <td>{{ item.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ item.unit_price|floatformat:2 }}</td>
+                    <td>
+                        <input class="item-input" type="text" name="name" value="{{ item.name }}" form="update-item-{{ item.id }}" required>
+                    </td>
+                    <td>
+                        <input class="item-input" type="number" name="quantity" value="{{ item.quantity }}" min="1" form="update-item-{{ item.id }}" required>
+                    </td>
+                    <td>
+                        <input class="item-input" type="number" name="unit_price" value="{{ item.unit_price }}" min="0" step="0.01" form="update-item-{{ item.id }}" required>
+                    </td>
                     <td>{{ item.quantity|add:0|mul:item.unit_price|floatformat:2 }}</td>
+                    <td>
+                        <div class="item-actions">
+                            <form id="update-item-{{ item.id }}" method="post" action="{% url 'receipt-item-update' receipt.id item.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-update">수정</button>
+                            </form>
+                            <form method="post" action="{% url 'receipt-item-delete' receipt.id item.id %}" onsubmit="return confirm('이 항목을 삭제할까요?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-delete">삭제</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
+        <div class="add-form">
+            <form method="post" action="{% url 'receipt-item-create' receipt.id %}">
+                {% csrf_token %}
+                <div class="add-form-grid">
+                    <input class="item-input" type="text" name="name" placeholder="상품명" required>
+                    <input class="item-input" type="number" name="quantity" value="1" min="1" required>
+                    <input class="item-input" type="number" name="unit_price" min="0" step="0.01" placeholder="단가" required>
+                    <button type="submit" class="btn btn-update">항목 추가</button>
+                </div>
+            </form>
+        </div>
         {% else %}
         <div class="empty">
             <p>등록된 항목이 없습니다.</p>
+        </div>
+
+        <div class="add-form">
+            <form method="post" action="{% url 'receipt-item-create' receipt.id %}">
+                {% csrf_token %}
+                <div class="add-form-grid">
+                    <input class="item-input" type="text" name="name" placeholder="상품명" required>
+                    <input class="item-input" type="number" name="quantity" value="1" min="1" required>
+                    <input class="item-input" type="number" name="unit_price" min="0" step="0.01" placeholder="단가" required>
+                    <button type="submit" class="btn btn-update">항목 추가</button>
+                </div>
+            </form>
         </div>
         {% endif %}
         
