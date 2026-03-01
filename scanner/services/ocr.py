@@ -1,5 +1,6 @@
 import cv2
 import pytesseract
+import re
 
 
 def preprocess_receipt_image(image_path: str):
@@ -9,7 +10,8 @@ def preprocess_receipt_image(image_path: str):
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     denoised = cv2.GaussianBlur(gray, (3, 3), 0)
-    thresholded = cv2.adaptiveThreshold(
+
+    adaptive = cv2.adaptiveThreshold(
         denoised,
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -17,9 +19,51 @@ def preprocess_receipt_image(image_path: str):
         31,
         15,
     )
-    return thresholded
+    _, otsu = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    scaled = cv2.resize(denoised, None, fx=1.7, fy=1.7, interpolation=cv2.INTER_CUBIC)
+    scaled_adaptive = cv2.adaptiveThreshold(
+        scaled,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31,
+        10,
+    )
+
+    return [adaptive, otsu, scaled_adaptive]
+
+
+def _score_ocr_text(text: str) -> float:
+    cleaned = text.strip()
+    if not cleaned:
+        return 0.0
+
+    total = max(len(cleaned), 1)
+    valid_chars = len(re.findall(r'[가-힣A-Za-z0-9\s.,:/()%-]', cleaned))
+    hangul = len(re.findall(r'[가-힣]', cleaned))
+    digits = len(re.findall(r'\d', cleaned))
+    lines = len([line for line in cleaned.splitlines() if line.strip()])
+
+    return (valid_chars / total) * 100 + hangul * 0.6 + digits * 0.4 + lines * 0.3
 
 
 def extract_text_from_receipt(image_path: str) -> str:
-    preprocessed = preprocess_receipt_image(image_path)
-    return pytesseract.image_to_string(preprocessed, lang='kor')
+    preprocessed_candidates = preprocess_receipt_image(image_path)
+    tesseract_configs = (
+        '--oem 1 --psm 6',
+        '--oem 1 --psm 4',
+    )
+
+    best_text = ''
+    best_score = -1.0
+
+    for image in preprocessed_candidates:
+        for config in tesseract_configs:
+            text = pytesseract.image_to_string(image, lang='kor+eng', config=config)
+            score = _score_ocr_text(text)
+            if score > best_score:
+                best_score = score
+                best_text = text
+
+    return best_text
