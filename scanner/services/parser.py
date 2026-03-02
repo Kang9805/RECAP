@@ -35,7 +35,7 @@ MAX_QUANTITY = 999
 
 
 def _to_decimal(value: str) -> Decimal | None:
-    normalized = value.replace(',', '').strip()
+    normalized = value.replace(',', '').replace('.', '').strip()
     if not normalized:
         return None
     try:
@@ -70,13 +70,21 @@ def _normalize_numeric_token(token: str) -> str:
             }
         )
     )
-    return re.sub(r'[^\d,]', '', corrected)
+    return re.sub(r'[^\d,.]', '', corrected)
 
 
 def _is_noise_line(line: str) -> bool:
     if not line:
         return True
     if NOISE_LINE_PATTERN.match(line):
+        return True
+    return False
+
+
+def _is_barcode_like_line(line: str) -> bool:
+    compact = re.sub(r'\s+', '', line)
+    digits = re.sub(r'\D', '', compact)
+    if len(digits) >= 8 and len(digits) >= int(len(compact) * 0.7):
         return True
     return False
 
@@ -93,7 +101,44 @@ def _is_item_name(name: str) -> bool:
         return False
     if len(name.strip()) < 2:
         return False
+    if _is_barcode_like_line(name):
+        return False
     return bool(re.search(r'[가-힣a-zA-Z]', name))
+
+
+def _clean_item_name(name: str) -> str:
+    cleaned = re.sub(r'^\d{1,3}\s+', '', name).strip()
+    cleaned = re.sub(r'\(.*?\)$', '', cleaned).strip()
+    return cleaned
+
+
+def _extract_numeric_row(line: str) -> tuple[int, Decimal] | None:
+    normalized = _normalize_line(line)
+    numeric_tokens = re.findall(r'[\dOoIl|SsB][\dOoIl|SsB,\.]*', normalized)
+    parsed_numbers = []
+
+    for token in numeric_tokens:
+        value = _to_decimal(_normalize_numeric_token(token))
+        if value is not None and value > 0:
+            parsed_numbers.append(value)
+
+    if len(parsed_numbers) < 2:
+        return None
+
+    qty = int(parsed_numbers[-2])
+    total_price = parsed_numbers[-1]
+
+    if qty <= 0 or qty > MAX_QUANTITY:
+        qty = 1
+
+    if total_price <= 0 or total_price > MAX_UNIT_PRICE:
+        return None
+
+    unit_price = (total_price / qty).quantize(Decimal('1'))
+    if unit_price <= 0 or unit_price > MAX_UNIT_PRICE:
+        return None
+
+    return qty, unit_price
 
 
 def _extract_item_from_line(line: str) -> dict | None:
@@ -107,7 +152,7 @@ def _extract_item_from_line(line: str) -> dict | None:
 
     match = qty_unit_total_pattern.match(line)
     if match:
-        name = match.group('name').strip()
+        name = _clean_item_name(match.group('name').strip())
         quantity = int(match.group('qty'))
         unit_price = _to_decimal(_normalize_numeric_token(match.group('unit')))
         total_price = _to_decimal(_normalize_numeric_token(match.group('total')))
@@ -132,7 +177,7 @@ def _extract_item_from_line(line: str) -> dict | None:
 
     match = qty_total_pattern.match(line)
     if match:
-        name = match.group('name').strip()
+        name = _clean_item_name(match.group('name').strip())
         quantity = int(match.group('qty'))
         total_price = _to_decimal(_normalize_numeric_token(match.group('price')))
 
@@ -154,7 +199,7 @@ def _extract_item_from_line(line: str) -> dict | None:
 
     match = price_only_pattern.match(line)
     if match:
-        name = match.group('name').strip()
+        name = _clean_item_name(match.group('name').strip())
         price = _to_decimal(_normalize_numeric_token(match.group('price')))
         if price is None:
             return None
@@ -179,9 +224,27 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
     items = []
     unparsed_lines = []
     lines = [_normalize_line(line) for line in extracted_text.splitlines()]
+    pending_name = None
 
     for line in lines:
         if _is_noise_line(line):
+            continue
+
+        numeric_row = _extract_numeric_row(line)
+        if pending_name and numeric_row:
+            qty, unit_price = numeric_row
+            if _is_item_name(pending_name):
+                items.append(
+                    {
+                        'name': pending_name,
+                        'quantity': qty,
+                        'unit_price': unit_price,
+                    }
+                )
+                pending_name = None
+                continue
+
+        if _is_barcode_like_line(line):
             continue
 
         if not _is_item_name(line):
@@ -190,7 +253,16 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
         parsed_item = _extract_item_from_line(line)
         if parsed_item:
             items.append(parsed_item)
+            pending_name = None
         else:
-            unparsed_lines.append(line)
+            cleaned_name = _clean_item_name(line)
+
+            if cleaned_name and _is_item_name(cleaned_name):
+                pending_name = cleaned_name
+            else:
+                unparsed_lines.append(line)
+
+    if pending_name:
+        unparsed_lines.append(pending_name)
 
     return items, unparsed_lines
