@@ -171,14 +171,26 @@ def _extract_item_from_line(line: str) -> dict | None:
 
 
 def parse_receipt_items(extracted_text: str) -> list[dict]:
+    items, _ = parse_receipt_items_with_unparsed(extracted_text)
+    return items
+
+
+def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], list[str]]:
     items = []
+    unparsed_lines = []
     lines = [_normalize_line(line) for line in extracted_text.splitlines()]
 
     for line in lines:
         if _is_noise_line(line):
             continue
+
+        if not _is_item_name(line):
+            continue
+
         parsed_item = _extract_item_from_line(line)
         if parsed_item:
             items.append(parsed_item)
+        else:
+            unparsed_lines.append(line)
 
-    return items
+    return items, unparsed_lines

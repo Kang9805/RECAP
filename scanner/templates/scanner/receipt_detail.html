@@ -53,6 +53,21 @@
             color: #555;
             min-height: 100px;
         }
+        .unparsed-box {
+            background-color: #fff8e1;
+            border: 1px solid #ffe08a;
+            border-radius: 6px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .unparsed-box ul {
+            margin: 0;
+            padding-left: 18px;
+            color: #6b5b00;
+        }
+        .unparsed-box li {
+            margin-bottom: 6px;
+        }
         h2 {
             color: #333;
             margin-top: 30px;
@@ -156,6 +171,21 @@
                 <span style="color: #999;">추출된 텍스트가 없습니다.</span>
             {% endif %}
         </div>
+
+        <h2>미분류 라인</h2>
+        {% if unparsed_lines %}
+        <div class="unparsed-box">
+            <ul>
+                {% for line in unparsed_lines %}
+                <li>{{ line }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="empty">
+            <p>미분류 라인이 없습니다.</p>
+        </div>
+        {% endif %}
         
         <h2>항목 목록</h2>
         {% if receipt.items.all %}

@@ -6,7 +6,7 @@ from django.views.generic import CreateView, ListView, DetailView
 from django.urls import reverse_lazy
 from .models import Receipt, ReceiptItem
 from .services.ocr import extract_text_from_receipt
-from .services.parser import parse_receipt_items
+from .services.parser import parse_receipt_items_with_unparsed
 
 
 MAX_UNIT_PRICE = Decimal('99999999.99')
@@ -27,7 +27,7 @@ class ReceiptUploadView(CreateView):
             self.object.extracted_text = text
             self.object.save()
 
-            parsed_items = parse_receipt_items(text)
+            parsed_items, _ = parse_receipt_items_with_unparsed(text)
             receipt_items = [
                 ReceiptItem(
                     receipt=self.object,
@@ -55,6 +55,12 @@ class ReceiptDetailView(DetailView):
     model = Receipt
     template_name = 'scanner/receipt_detail.html'
     context_object_name = 'receipt'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        _, unparsed_lines = parse_receipt_items_with_unparsed(self.object.extracted_text or '')
+        context['unparsed_lines'] = unparsed_lines
+        return context
 
 
 def _parse_item_form(request):
