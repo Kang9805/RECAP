@@ -28,9 +28,15 @@ SKIP_KEYWORDS = (
     '계산대',
     '쿠폰',
     '할인합계',
+    '고객',
+    '고객수',
+    '객수',
+    '렉수',
+    '주문자',
+    '수탈',
 )
 
-TABLE_HEADER_HINTS = ('단가', '수량', '수향', '금액', '고액')
+TABLE_HEADER_HINTS = ('단가', '수량', '수향', '수탈', '금액', '고액')
 
 NOISE_LINE_PATTERN = re.compile(r'^[\s\-_=*~`]+$')
 MAX_UNIT_PRICE = Decimal('99999999.99')
@@ -128,6 +134,9 @@ def _is_candidate_name_line(name: str) -> bool:
 
 
 def _is_table_header_line(line: str) -> bool:
+    normalized = re.sub(r'\s+', '', line)
+    if normalized in TABLE_HEADER_HINTS:
+        return True
     return sum(1 for hint in TABLE_HEADER_HINTS if hint in line) >= 2
 
 
@@ -159,13 +168,42 @@ def _extract_numeric_row(line: str) -> tuple[int, Decimal] | None:
     if len(parsed_numbers) < 2:
         return None
 
-    qty = int(parsed_numbers[-2])
-    total_price = parsed_numbers[-1]
+    qty = None
+    total_price = None
 
-    if qty <= 0 or qty > MAX_QUANTITY:
+    if len(parsed_numbers) == 2:
+        first, second = parsed_numbers
+
+        if first <= MAX_QUANTITY and second >= MIN_UNIT_PRICE:
+            qty = int(first)
+            total_price = second
+        elif second <= MAX_QUANTITY and first >= MIN_UNIT_PRICE:
+            qty = int(second)
+            total_price = first * qty
+        else:
+            qty = 1
+            total_price = max(first, second)
+    else:
+        tail = parsed_numbers[-3:]
+        first, second, third = tail
+
+        if second <= MAX_QUANTITY and third >= MIN_UNIT_PRICE:
+            qty = int(second)
+            total_price = third
+        elif first <= MAX_QUANTITY and third >= MIN_UNIT_PRICE:
+            qty = int(first)
+            total_price = third
+        elif third <= MAX_QUANTITY and second >= MIN_UNIT_PRICE:
+            qty = int(third)
+            total_price = second * qty
+        else:
+            qty = int(parsed_numbers[-2])
+            total_price = parsed_numbers[-1]
+
+    if qty is None or qty <= 0 or qty > MAX_QUANTITY:
         qty = 1
 
-    if total_price <= 0 or total_price > MAX_UNIT_PRICE:
+    if total_price is None or total_price <= 0 or total_price > MAX_UNIT_PRICE:
         return None
 
     unit_price = (total_price / qty).quantize(Decimal('1'))
@@ -289,7 +327,7 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
         numeric_row = _extract_numeric_row(line)
         if pending_name and numeric_row:
             qty, unit_price = numeric_row
-            loose_name_ok = pending_from_index and bool(re.search(r'[A-Za-z가-힣]', pending_name))
+            loose_name_ok = pending_from_index and bool(re.search(r'[가-힣]', pending_name))
             if _is_item_name(pending_name) or _is_candidate_name_line(pending_name) or loose_name_ok:
                 items.append(
                     {
