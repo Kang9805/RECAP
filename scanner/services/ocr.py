@@ -68,6 +68,50 @@ def preprocess_receipt_image(image_path: str):
     return [adaptive, otsu, opened, closed, scaled_adaptive]
 
 
+def _extract_text_line_by_line(binary_image) -> str:
+    if len(binary_image.shape) != 2:
+        return ''
+
+    inverted = cv2.bitwise_not(binary_image)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 3))
+    connected = cv2.morphologyEx(inverted, cv2.MORPH_CLOSE, kernel)
+
+    contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return ''
+
+    boxes = []
+    for contour in contours:
+        x, y, width, height = cv2.boundingRect(contour)
+        if width < 80 or height < 10:
+            continue
+        if height > binary_image.shape[0] * 0.2:
+            continue
+        boxes.append((x, y, width, height))
+
+    boxes.sort(key=lambda box: box[1])
+
+    lines = []
+    for x, y, width, height in boxes:
+        margin = 4
+        y0 = max(0, y - margin)
+        y1 = min(binary_image.shape[0], y + height + margin)
+        x0 = max(0, x - margin)
+        x1 = min(binary_image.shape[1], x + width + margin)
+        roi = binary_image[y0:y1, x0:x1]
+
+        line_text = pytesseract.image_to_string(
+            roi,
+            lang='kor+eng',
+            config='--oem 1 --psm 7 -c preserve_interword_spaces=1',
+        )
+        cleaned = line_text.strip()
+        if cleaned:
+            lines.append(cleaned)
+
+    return '\n'.join(lines)
+
+
 def _score_ocr_text(text: str) -> float:
     cleaned = text.strip()
     if not cleaned:
@@ -80,14 +124,20 @@ def _score_ocr_text(text: str) -> float:
     money_like = len(re.findall(r'\d{1,3}(?:[,\.]\d{3})+', cleaned))
     lines = len([line for line in cleaned.splitlines() if line.strip()])
     weird_chars = len(re.findall(r'[^가-힣A-Za-z0-9\s.,:/()%-]', cleaned))
+    item_like_lines = len(
+        re.findall(r'\d[\d,\.]*\s+\d{1,2}\s+\d[\d,\.]*', cleaned)
+    )
+    single_char_lines = len(re.findall(r'^\s*[^\s]\s*$', cleaned, flags=re.MULTILINE))
 
     return (
         (valid_chars / total) * 100
         + hangul * 0.6
         + digits * 0.4
         + money_like * 0.8
+        + item_like_lines * 2.0
         + lines * 0.3
         - weird_chars * 0.5
+        - single_char_lines * 0.8
     )
 
 
@@ -103,6 +153,13 @@ def extract_text_from_receipt(image_path: str) -> str:
     best_score = -1.0
 
     for image in preprocessed_candidates:
+        line_text = _extract_text_line_by_line(image)
+        if line_text:
+            line_score = _score_ocr_text(line_text)
+            if line_score > best_score:
+                best_score = line_score
+                best_text = line_text
+
         for config in tesseract_configs:
             text = pytesseract.image_to_string(image, lang='kor+eng', config=config)
             score = _score_ocr_text(text)
