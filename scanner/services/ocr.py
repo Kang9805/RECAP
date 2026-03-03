@@ -38,7 +38,9 @@ def preprocess_receipt_image(image_path: str):
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     deskewed = _deskew_image(gray)
-    denoised = cv2.GaussianBlur(deskewed, (3, 3), 0)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    contrast = clahe.apply(deskewed)
+    denoised = cv2.GaussianBlur(contrast, (3, 3), 0)
 
     adaptive = cv2.adaptiveThreshold(
         denoised,
@@ -49,6 +51,9 @@ def preprocess_receipt_image(image_path: str):
         15,
     )
     _, otsu = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    opened = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel)
+    closed = cv2.morphologyEx(adaptive, cv2.MORPH_CLOSE, kernel)
 
     scaled = cv2.resize(denoised, None, fx=1.7, fy=1.7, interpolation=cv2.INTER_CUBIC)
     scaled_adaptive = cv2.adaptiveThreshold(
@@ -60,7 +65,7 @@ def preprocess_receipt_image(image_path: str):
         10,
     )
 
-    return [adaptive, otsu, scaled_adaptive]
+    return [adaptive, otsu, opened, closed, scaled_adaptive]
 
 
 def _score_ocr_text(text: str) -> float:
@@ -72,16 +77,26 @@ def _score_ocr_text(text: str) -> float:
     valid_chars = len(re.findall(r'[가-힣A-Za-z0-9\s.,:/()%-]', cleaned))
     hangul = len(re.findall(r'[가-힣]', cleaned))
     digits = len(re.findall(r'\d', cleaned))
+    money_like = len(re.findall(r'\d{1,3}(?:[,\.]\d{3})+', cleaned))
     lines = len([line for line in cleaned.splitlines() if line.strip()])
+    weird_chars = len(re.findall(r'[^가-힣A-Za-z0-9\s.,:/()%-]', cleaned))
 
-    return (valid_chars / total) * 100 + hangul * 0.6 + digits * 0.4 + lines * 0.3
+    return (
+        (valid_chars / total) * 100
+        + hangul * 0.6
+        + digits * 0.4
+        + money_like * 0.8
+        + lines * 0.3
+        - weird_chars * 0.5
+    )
 
 
 def extract_text_from_receipt(image_path: str) -> str:
     preprocessed_candidates = preprocess_receipt_image(image_path)
     tesseract_configs = (
-        '--oem 1 --psm 6',
-        '--oem 1 --psm 4',
+        '--oem 1 --psm 6 -c preserve_interword_spaces=1',
+        '--oem 1 --psm 4 -c preserve_interword_spaces=1',
+        '--oem 1 --psm 11 -c preserve_interword_spaces=1',
     )
 
     best_text = ''
