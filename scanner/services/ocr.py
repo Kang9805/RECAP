@@ -2,6 +2,14 @@ import cv2
 import pytesseract
 import re
 
+try:
+    from paddleocr import PaddleOCR
+except Exception:
+    PaddleOCR = None
+
+
+_paddle_ocr_engine = None
+
 
 def _deskew_image(gray_image):
     inverted = cv2.bitwise_not(gray_image)
@@ -141,6 +149,82 @@ def _score_ocr_text(text: str) -> float:
     )
 
 
+def _get_paddle_ocr_engine():
+    global _paddle_ocr_engine
+
+    if PaddleOCR is None:
+        return None
+
+    if _paddle_ocr_engine is not None:
+        return _paddle_ocr_engine
+
+    try:
+        _paddle_ocr_engine = PaddleOCR(
+            use_angle_cls=True,
+            lang='korean',
+            show_log=False,
+        )
+    except Exception:
+        _paddle_ocr_engine = None
+
+    return _paddle_ocr_engine
+
+
+def _extract_text_with_paddle(image_path: str, preprocessed_candidates) -> str:
+    engine = _get_paddle_ocr_engine()
+    if engine is None:
+        return ''
+
+    source = cv2.imread(image_path)
+    images = []
+    if source is not None:
+        images.append(source)
+
+    for candidate in preprocessed_candidates:
+        if len(candidate.shape) == 2:
+            images.append(cv2.cvtColor(candidate, cv2.COLOR_GRAY2BGR))
+        else:
+            images.append(candidate)
+
+    best_text = ''
+    best_score = -1.0
+
+    for image in images:
+        try:
+            result = engine.ocr(image, cls=True)
+        except Exception:
+            continue
+
+        lines = []
+        if not result:
+            continue
+
+        for block in result:
+            if not block:
+                continue
+            for row in block:
+                if len(row) < 2:
+                    continue
+                text_info = row[1]
+                if not text_info or len(text_info) < 2:
+                    continue
+                text = str(text_info[0]).strip()
+                confidence = float(text_info[1])
+                if text and confidence >= 0.35:
+                    lines.append(text)
+
+        candidate_text = '\n'.join(lines).strip()
+        if not candidate_text:
+            continue
+
+        score = _score_ocr_text(candidate_text)
+        if score > best_score:
+            best_score = score
+            best_text = candidate_text
+
+    return best_text
+
+
 def extract_text_from_receipt(image_path: str) -> str:
     preprocessed_candidates = preprocess_receipt_image(image_path)
     tesseract_configs = (
@@ -151,6 +235,13 @@ def extract_text_from_receipt(image_path: str) -> str:
 
     best_text = ''
     best_score = -1.0
+
+    paddle_text = _extract_text_with_paddle(image_path, preprocessed_candidates)
+    if paddle_text:
+        paddle_score = _score_ocr_text(paddle_text)
+        if paddle_score > best_score:
+            best_score = paddle_score
+            best_text = paddle_text
 
     for image in preprocessed_candidates:
         line_text = _extract_text_line_by_line(image)
