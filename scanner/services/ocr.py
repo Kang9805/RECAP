@@ -231,14 +231,17 @@ def extract_text_from_receipt(image_path: str) -> str:
         '--oem 1 --psm 6 -c preserve_interword_spaces=1',
         '--oem 1 --psm 4 -c preserve_interword_spaces=1',
         '--oem 1 --psm 11 -c preserve_interword_spaces=1',
+        '--oem 1 --psm 12 -c preserve_interword_spaces=1',
     )
 
     best_text = ''
     best_score = -1.0
+    ranked_candidates = []
 
     paddle_text = _extract_text_with_paddle(image_path, preprocessed_candidates)
     if paddle_text:
         paddle_score = _score_ocr_text(paddle_text)
+        ranked_candidates.append((paddle_score, paddle_text))
         if paddle_score > best_score:
             best_score = paddle_score
             best_text = paddle_text
@@ -247,6 +250,7 @@ def extract_text_from_receipt(image_path: str) -> str:
         line_text = _extract_text_line_by_line(image)
         if line_text:
             line_score = _score_ocr_text(line_text)
+            ranked_candidates.append((line_score, line_text))
             if line_score > best_score:
                 best_score = line_score
                 best_text = line_text
@@ -254,8 +258,38 @@ def extract_text_from_receipt(image_path: str) -> str:
         for config in tesseract_configs:
             text = pytesseract.image_to_string(image, lang='kor+eng', config=config)
             score = _score_ocr_text(text)
+            ranked_candidates.append((score, text))
             if score > best_score:
                 best_score = score
                 best_text = text
+
+    non_empty_candidates = [
+        (score, text)
+        for score, text in ranked_candidates
+        if text and text.strip()
+    ]
+    non_empty_candidates.sort(key=lambda item: item[0], reverse=True)
+
+    if len(non_empty_candidates) >= 2:
+        first_text = non_empty_candidates[0][1]
+        second_text = non_empty_candidates[1][1]
+
+        merged_lines = []
+        seen = set()
+        for source_text in (first_text, second_text):
+            for line in source_text.splitlines():
+                normalized = re.sub(r'\s+', ' ', line).strip()
+                if not normalized:
+                    continue
+                if normalized in seen:
+                    continue
+                seen.add(normalized)
+                merged_lines.append(normalized)
+
+        merged_text = '\n'.join(merged_lines)
+        merged_score = _score_ocr_text(merged_text)
+        if merged_score > best_score:
+            best_score = merged_score
+            best_text = merged_text
 
     return best_text
