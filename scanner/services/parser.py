@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 SKIP_KEYWORDS = (
     '합계',
     '총액',
+    '부가',
     '부가세',
     '과세',
     '면세',
@@ -29,9 +30,12 @@ SKIP_KEYWORDS = (
     '할인합계',
 )
 
+TABLE_HEADER_HINTS = ('단가', '수량', '수향', '금액', '고액')
+
 NOISE_LINE_PATTERN = re.compile(r'^[\s\-_=*~`]+$')
 MAX_UNIT_PRICE = Decimal('99999999.99')
-MAX_QUANTITY = 999
+MIN_UNIT_PRICE = Decimal('100')
+MAX_QUANTITY = 50
 
 
 def _to_decimal(value: str) -> Decimal | None:
@@ -91,7 +95,8 @@ def _is_barcode_like_line(line: str) -> bool:
 
 def _is_item_name(name: str) -> bool:
     lowered = name.lower()
-    if any(keyword in lowered for keyword in SKIP_KEYWORDS):
+    compact = re.sub(r'\s+', '', lowered)
+    if any(keyword in lowered or keyword.replace(' ', '') in compact for keyword in SKIP_KEYWORDS):
         return False
     if re.search(r'\d{2,}[-/:]\d{1,2}[-/:]\d{1,2}', name):
         return False
@@ -101,9 +106,38 @@ def _is_item_name(name: str) -> bool:
         return False
     if len(name.strip()) < 2:
         return False
+    if len(name.strip()) > 24:
+        return False
     if _is_barcode_like_line(name):
         return False
-    return bool(re.search(r'[가-힣a-zA-Z]', name))
+    if len(re.findall(r'[가-힣]', name)) < 1:
+        return False
+    return True
+
+
+def _is_candidate_name_line(name: str) -> bool:
+    if not _is_item_name(name):
+        return False
+    if len(name.split()) > 3:
+        return False
+    if re.search(r'\d', name):
+        return False
+    if re.search(r'[시군구읍면동]$', name.strip()):
+        return False
+    return True
+
+
+def _is_table_header_line(line: str) -> bool:
+    return sum(1 for hint in TABLE_HEADER_HINTS if hint in line) >= 2
+
+
+def _is_total_like_line(line: str) -> bool:
+    lowered = re.sub(r'\s+', '', line.lower())
+    return any(keyword.replace(' ', '') in lowered for keyword in ('합계', '총액', '부가세', '과세', '면세', '결제', '카드'))
+
+
+def _is_indexed_name_line(line: str) -> bool:
+    return bool(re.match(r'^\d{1,3}\s+[가-힣A-Za-z].+', line))
 
 
 def _clean_item_name(name: str) -> str:
@@ -137,6 +171,8 @@ def _extract_numeric_row(line: str) -> tuple[int, Decimal] | None:
     unit_price = (total_price / qty).quantize(Decimal('1'))
     if unit_price <= 0 or unit_price > MAX_UNIT_PRICE:
         return None
+    if unit_price < MIN_UNIT_PRICE:
+        return None
 
     return qty, unit_price
 
@@ -160,6 +196,8 @@ def _extract_item_from_line(line: str) -> dict | None:
         if quantity <= 0 or quantity > MAX_QUANTITY:
             return None
         if unit_price is None or total_price is None:
+            return None
+        if unit_price < MIN_UNIT_PRICE or total_price < MIN_UNIT_PRICE:
             return None
 
         if quantity > 0 and total_price > 0:
@@ -185,10 +223,14 @@ def _extract_item_from_line(line: str) -> dict | None:
             return None
         if total_price is None:
             return None
+        if total_price < MIN_UNIT_PRICE:
+            return None
 
         if _is_item_name(name) and quantity > 0:
             unit_price = (total_price / quantity).quantize(Decimal('1'))
             if unit_price <= 0 or unit_price > MAX_UNIT_PRICE:
+                return None
+            if unit_price < MIN_UNIT_PRICE:
                 return None
             return {
                 'name': name,
@@ -202,6 +244,8 @@ def _extract_item_from_line(line: str) -> dict | None:
         name = _clean_item_name(match.group('name').strip())
         price = _to_decimal(_normalize_numeric_token(match.group('price')))
         if price is None:
+            return None
+        if price < MIN_UNIT_PRICE:
             return None
 
         if _is_item_name(name):
@@ -225,15 +269,28 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
     unparsed_lines = []
     lines = [_normalize_line(line) for line in extracted_text.splitlines()]
     pending_name = None
+    pending_from_index = False
+    in_item_table = False
 
     for line in lines:
         if _is_noise_line(line):
             continue
 
+        if _is_table_header_line(line):
+            in_item_table = True
+            continue
+
+        if in_item_table and _is_total_like_line(line):
+            in_item_table = False
+
+        if not in_item_table and _is_total_like_line(line):
+            continue
+
         numeric_row = _extract_numeric_row(line)
         if pending_name and numeric_row:
             qty, unit_price = numeric_row
-            if _is_item_name(pending_name):
+            loose_name_ok = pending_from_index and bool(re.search(r'[A-Za-z가-힣]', pending_name))
+            if _is_item_name(pending_name) or _is_candidate_name_line(pending_name) or loose_name_ok:
                 items.append(
                     {
                         'name': pending_name,
@@ -242,23 +299,34 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
                     }
                 )
                 pending_name = None
+                pending_from_index = False
                 continue
 
         if _is_barcode_like_line(line):
             continue
 
-        if not _is_item_name(line):
+        # 헤더 인식 실패 대비: 인덱스+상품명 라인은 항상 후보로 본다.
+        if _is_indexed_name_line(line):
+            cleaned_name = _clean_item_name(line)
+            if cleaned_name and not _is_total_like_line(cleaned_name):
+                pending_name = cleaned_name
+                pending_from_index = True
+                continue
+
+        if not in_item_table and not _is_item_name(line):
             continue
 
         parsed_item = _extract_item_from_line(line)
         if parsed_item:
             items.append(parsed_item)
             pending_name = None
+            pending_from_index = False
         else:
             cleaned_name = _clean_item_name(line)
 
-            if cleaned_name and _is_item_name(cleaned_name):
+            if cleaned_name and (_is_candidate_name_line(cleaned_name) or (in_item_table and len(cleaned_name) >= 2)):
                 pending_name = cleaned_name
+                pending_from_index = False
             else:
                 unparsed_lines.append(line)
 
