@@ -114,6 +114,13 @@ def _is_item_name(name: str) -> bool:
         return False
     if len(name.strip()) > 24:
         return False
+
+    tokens = [token for token in re.split(r'\s+', name.strip()) if token]
+    if tokens:
+        token_lengths = [len(re.sub(r'[^가-힣A-Za-z0-9]', '', token)) for token in tokens]
+        if token_lengths and all(length <= 1 for length in token_lengths):
+            return False
+
     if _is_barcode_like_line(name):
         return False
     if len(re.findall(r'[가-힣]', name)) < 1:
@@ -152,7 +159,26 @@ def _is_indexed_name_line(line: str) -> bool:
 def _clean_item_name(name: str) -> str:
     cleaned = re.sub(r'^\d{1,3}\s+', '', name).strip()
     cleaned = re.sub(r'\(.*?\)$', '', cleaned).strip()
+    cleaned = re.sub(r'[^가-힣A-Za-z0-9\s/&+\-]', ' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
+
+
+def _extract_single_price(line: str) -> Decimal | None:
+    normalized = _normalize_line(line)
+    if re.search(r'[가-힣A-Za-z]', normalized):
+        return None
+
+    numeric_tokens = re.findall(r'[\dOoIl|SsB][\dOoIl|SsB,\.]*', normalized)
+    if len(numeric_tokens) != 1:
+        return None
+
+    price = _to_decimal(_normalize_numeric_token(numeric_tokens[0]))
+    if price is None:
+        return None
+    if price < MIN_UNIT_PRICE or price > MAX_UNIT_PRICE:
+        return None
+    return price
 
 
 def _extract_numeric_row(line: str) -> tuple[int, Decimal] | None:
@@ -339,6 +365,22 @@ def parse_receipt_items_with_unparsed(extracted_text: str) -> tuple[list[dict], 
                 pending_name = None
                 pending_from_index = False
                 continue
+
+        if pending_name:
+            single_price = _extract_single_price(line)
+            if single_price is not None:
+                loose_name_ok = pending_from_index and bool(re.search(r'[가-힣]', pending_name))
+                if _is_item_name(pending_name) or _is_candidate_name_line(pending_name) or loose_name_ok:
+                    items.append(
+                        {
+                            'name': pending_name,
+                            'quantity': 1,
+                            'unit_price': single_price,
+                        }
+                    )
+                    pending_name = None
+                    pending_from_index = False
+                    continue
 
         if _is_barcode_like_line(line):
             continue
