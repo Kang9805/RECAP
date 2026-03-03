@@ -59,9 +59,6 @@ def preprocess_receipt_image(image_path: str):
         15,
     )
     _, otsu = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    opened = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel)
-    closed = cv2.morphologyEx(adaptive, cv2.MORPH_CLOSE, kernel)
 
     scaled = cv2.resize(denoised, None, fx=1.7, fy=1.7, interpolation=cv2.INTER_CUBIC)
     scaled_adaptive = cv2.adaptiveThreshold(
@@ -73,7 +70,7 @@ def preprocess_receipt_image(image_path: str):
         10,
     )
 
-    return [adaptive, otsu, opened, closed, scaled_adaptive]
+    return [adaptive, scaled_adaptive, otsu]
 
 
 def _extract_text_line_by_line(binary_image) -> str:
@@ -160,7 +157,7 @@ def _get_paddle_ocr_engine():
 
     try:
         _paddle_ocr_engine = PaddleOCR(
-            use_angle_cls=True,
+            use_angle_cls=False,
             lang='korean',
             show_log=False,
         )
@@ -179,19 +176,19 @@ def _extract_text_with_paddle(image_path: str, preprocessed_candidates) -> str:
     images = []
     if source is not None:
         images.append(source)
-
-    for candidate in preprocessed_candidates:
-        if len(candidate.shape) == 2:
-            images.append(cv2.cvtColor(candidate, cv2.COLOR_GRAY2BGR))
+    elif preprocessed_candidates:
+        selected = preprocessed_candidates[1] if len(preprocessed_candidates) > 1 else preprocessed_candidates[0]
+        if len(selected.shape) == 2:
+            images.append(cv2.cvtColor(selected, cv2.COLOR_GRAY2BGR))
         else:
-            images.append(candidate)
+            images.append(selected)
 
     best_text = ''
     best_score = -1.0
 
     for image in images:
         try:
-            result = engine.ocr(image, cls=True)
+            result = engine.ocr(image, cls=False)
         except Exception:
             continue
 
@@ -229,9 +226,7 @@ def extract_text_from_receipt(image_path: str) -> str:
     preprocessed_candidates = preprocess_receipt_image(image_path)
     tesseract_configs = (
         '--oem 1 --psm 6 -c preserve_interword_spaces=1',
-        '--oem 1 --psm 4 -c preserve_interword_spaces=1',
         '--oem 1 --psm 11 -c preserve_interword_spaces=1',
-        '--oem 1 --psm 12 -c preserve_interword_spaces=1',
     )
 
     best_text = ''
@@ -246,7 +241,10 @@ def extract_text_from_receipt(image_path: str) -> str:
             best_score = paddle_score
             best_text = paddle_text
 
-    for image in preprocessed_candidates:
+        if paddle_score >= 120:
+            return best_text
+
+    for image in preprocessed_candidates[:2]:
         line_text = _extract_text_line_by_line(image)
         if line_text:
             line_score = _score_ocr_text(line_text)
