@@ -91,6 +91,30 @@ def receipt_delete_view(request, pk):
 
 
 @require_POST
+def receipt_retry_view(request, pk):
+    receipt = get_object_or_404(Receipt, pk=pk)
+
+    if not receipt.image:
+        receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error = 'No receipt image found'
+        receipt.save(update_fields=['processing_status', 'processing_error'])
+        return redirect('receipt-detail', pk=receipt.pk)
+
+    receipt.processing_status = Receipt.STATUS_PENDING
+    receipt.processing_error = ''
+    receipt.save(update_fields=['processing_status', 'processing_error'])
+
+    try:
+        process_receipt_ocr_task.delay(receipt.pk)
+    except Exception as exc:
+        receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
+        receipt.save(update_fields=['processing_status', 'processing_error'])
+
+    return redirect('receipt-detail', pk=receipt.pk)
+
+
+@require_POST
 def receipt_item_create_view(request, receipt_pk):
     receipt = get_object_or_404(Receipt, pk=receipt_pk)
     try:

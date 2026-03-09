@@ -69,6 +69,12 @@
             border: 1px solid #ef9a9a;
             color: #8b1d1d;
         }
+        .retry-action {
+            margin-top: 10px;
+        }
+        .retry-action form {
+            margin: 0;
+        }
         .image-preview {
             text-align: center;
             margin: 20px 0;
@@ -211,6 +217,12 @@
             {% if receipt.processing_status == 'failed' and receipt.processing_error %}
             <div class="notice notice-failed">
                 처리 실패: {{ receipt.processing_error }}
+            </div>
+            <div class="retry-action">
+                <form method="post" action="{% url 'receipt-retry' receipt.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-update">재처리</button>
+                </form>
             </div>
             {% endif %}
         </div>
