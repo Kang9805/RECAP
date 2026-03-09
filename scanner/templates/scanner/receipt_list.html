@@ -98,6 +98,7 @@
                 <tr>
                     <th>ID</th>
                     <th>업로드 날짜</th>
+                    <th>처리 상태</th>
                     <th>상품 개수</th>
                     <th>작업</th>
                 </tr>
@@ -107,6 +108,17 @@
                 <tr>
                     <td>#{{ receipt.id }}</td>
                     <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if receipt.processing_status == 'completed' %}
+                            완료
+                        {% elif receipt.processing_status == 'processing' %}
+                            처리중
+                        {% elif receipt.processing_status == 'failed' %}
+                            실패
+                        {% else %}
+                            대기중
+                        {% endif %}
+                    </td>
                     <td>{{ receipt.items.count }}</td>
                     <td>
                         <div class="actions">
