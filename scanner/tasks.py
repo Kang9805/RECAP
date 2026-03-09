@@ -7,7 +7,11 @@ from .services.ocr import extract_text_from_receipt
 from .services.parser import parse_receipt_items_with_unparsed
 
 
-@shared_task(bind=True)
+MAX_RETRIES = 3
+RETRY_BASE_SECONDS = 2
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES)
 def process_receipt_ocr_task(self, receipt_id: int):
     try:
         receipt = Receipt.objects.get(pk=receipt_id)
@@ -47,6 +51,18 @@ def process_receipt_ocr_task(self, receipt_id: int):
             if receipt_items:
                 ReceiptItem.objects.bulk_create(receipt_items)
     except Exception as exc:
+        current_retry = self.request.retries
+
+        if current_retry < self.max_retries:
+            retry_in = RETRY_BASE_SECONDS * (2 ** current_retry)
+            receipt.processing_status = Receipt.STATUS_PENDING
+            receipt.processing_error = (
+                f'Temporary OCR error. Retry {current_retry + 1}/{self.max_retries} '
+                f'in {retry_in}s: {str(exc)[:200]}'
+            )
+            receipt.save(update_fields=['processing_status', 'processing_error'])
+            raise self.retry(exc=exc, countdown=retry_in)
+
         receipt.processing_status = Receipt.STATUS_FAILED
-        receipt.processing_error = str(exc)[:500]
+        receipt.processing_error = f'OCR failed after retries: {str(exc)[:300]}'
         receipt.save(update_fields=['processing_status', 'processing_error'])
