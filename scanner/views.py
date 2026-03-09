@@ -5,8 +5,8 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, DetailView
 from django.urls import reverse_lazy
 from .models import Receipt, ReceiptItem
-from .services.ocr import extract_text_from_receipt
 from .services.parser import parse_receipt_items_with_unparsed
+from .tasks import process_receipt_ocr_task
 
 
 MAX_UNIT_PRICE = Decimal('99999999.99')
@@ -21,25 +21,19 @@ class ReceiptUploadView(CreateView):
     
     def form_valid(self, form):
         response = super().form_valid(form)
-        # OCR 실행
+
         if self.object.image:
-            text = extract_text_from_receipt(self.object.image.path)
-            self.object.extracted_text = text
-            self.object.save()
+            self.object.processing_status = Receipt.STATUS_PENDING
+            self.object.processing_error = ''
+            self.object.extracted_text = ''
+            self.object.save(update_fields=['processing_status', 'processing_error', 'extracted_text'])
 
-            parsed_items, _ = parse_receipt_items_with_unparsed(text)
-            receipt_items = [
-                ReceiptItem(
-                    receipt=self.object,
-                    name=item['name'],
-                    quantity=item['quantity'],
-                    unit_price=item['unit_price'],
-                )
-                for item in parsed_items
-            ]
-
-            if receipt_items:
-                ReceiptItem.objects.bulk_create(receipt_items)
+            try:
+                process_receipt_ocr_task.delay(self.object.pk)
+            except Exception as exc:
+                self.object.processing_status = Receipt.STATUS_FAILED
+                self.object.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
+                self.object.save(update_fields=['processing_status', 'processing_error'])
 
         return response
 
@@ -58,7 +52,10 @@ class ReceiptDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        _, unparsed_lines = parse_receipt_items_with_unparsed(self.object.extracted_text or '')
+        if self.object.processing_status == Receipt.STATUS_COMPLETED:
+            _, unparsed_lines = parse_receipt_items_with_unparsed(self.object.extracted_text or '')
+        else:
+            unparsed_lines = []
         context['unparsed_lines'] = unparsed_lines
         return context
 
