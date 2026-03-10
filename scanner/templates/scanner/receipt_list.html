@@ -204,6 +204,8 @@
                     <th>ID</th>
                     <th>업로드 날짜</th>
                     <th>처리 상태</th>
+                    <th>시도</th>
+                    <th>처리시간</th>
                     <th>상품 개수</th>
                     <th>작업</th>
                 </tr>
@@ -222,6 +224,14 @@
                             실패
                         {% else %}
                             대기중
+                        {% endif %}
+                    </td>
+                    <td>{{ receipt.processing_attempts }}</td>
+                    <td>
+                        {% if receipt.processing_duration_ms %}
+                            {{ receipt.processing_duration_ms }} ms
+                        {% else %}
+                            -
                         {% endif %}
                     </td>
                     <td>{{ receipt.items.count }}</td>

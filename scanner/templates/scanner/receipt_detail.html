@@ -197,6 +197,15 @@
         <div class="receipt-info">
             <p><strong>ID:</strong> #{{ receipt.id }}</p>
             <p><strong>업로드 날짜:</strong> {{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</p>
+            <p><strong>처리 시도 횟수:</strong> {{ receipt.processing_attempts }}</p>
+            <p>
+                <strong>처리 시간:</strong>
+                {% if receipt.processing_duration_ms %}
+                    {{ receipt.processing_duration_ms }} ms
+                {% else %}
+                    -
+                {% endif %}
+            </p>
             <p>
                 <strong>처리 상태:</strong>
                 {% if receipt.processing_status == 'completed' %}

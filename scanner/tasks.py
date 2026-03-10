@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 
 from celery import shared_task
 
@@ -13,33 +14,41 @@ RETRY_BASE_SECONDS = 2
 
 @shared_task(bind=True, max_retries=MAX_RETRIES)
 def process_receipt_ocr_task(self, receipt_id: int):
+    started_at = timezone.now()
+
     try:
         receipt = Receipt.objects.get(pk=receipt_id)
     except Receipt.DoesNotExist:
         return
 
     if not receipt.image:
+        elapsed_ms = int((timezone.now() - started_at).total_seconds() * 1000)
         receipt.processing_status = Receipt.STATUS_FAILED
         receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
         receipt.processing_error = 'No receipt image found'
-        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+        receipt.processing_attempts = self.request.retries + 1
+        receipt.processing_duration_ms = elapsed_ms
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms'])
         return
 
     receipt.processing_status = Receipt.STATUS_PROCESSING
     receipt.processing_error_code = Receipt.ERROR_CODE_NONE
     receipt.processing_error = ''
-    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+    receipt.processing_attempts = self.request.retries + 1
+    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts'])
 
     try:
         text = extract_text_from_receipt(receipt.image.path)
         parsed_items, _ = parse_receipt_items_with_unparsed(text)
 
         with transaction.atomic():
+            elapsed_ms = int((timezone.now() - started_at).total_seconds() * 1000)
             receipt.extracted_text = text
             receipt.processing_status = Receipt.STATUS_COMPLETED
             receipt.processing_error_code = Receipt.ERROR_CODE_NONE
             receipt.processing_error = ''
-            receipt.save(update_fields=['extracted_text', 'processing_status', 'processing_error_code', 'processing_error'])
+            receipt.processing_duration_ms = elapsed_ms
+            receipt.save(update_fields=['extracted_text', 'processing_status', 'processing_error_code', 'processing_error', 'processing_duration_ms'])
 
             receipt.items.all().delete()
             receipt_items = [
@@ -67,7 +76,9 @@ def process_receipt_ocr_task(self, receipt_id: int):
             receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
             raise self.retry(exc=exc, countdown=retry_in)
 
+        elapsed_ms = int((timezone.now() - started_at).total_seconds() * 1000)
         receipt.processing_status = Receipt.STATUS_FAILED
         receipt.processing_error_code = Receipt.ERROR_CODE_OCR_FAILED
         receipt.processing_error = f'OCR failed after retries: {str(exc)[:300]}'
-        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+        receipt.processing_duration_ms = elapsed_ms
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_duration_ms'])
