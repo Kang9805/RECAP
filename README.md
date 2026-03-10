@@ -81,6 +81,22 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+### 3-1. Celery Worker/Beat 시작 (비동기 OCR + 정기 stuck 정리)
+
+```bash
+# worker
+celery -A config worker --loglevel=info
+
+# beat (주기적으로 mark_stuck_receipts_task 실행)
+celery -A config beat --loglevel=info
+```
+
+Docker Compose를 사용한다면 아래처럼 `web`, `worker`, `beat`를 함께 실행할 수 있습니다.
+
+```bash
+docker compose up --build
+```
+
 서버는 `http://127.0.0.1:8000/` 에서 실행됩니다.
 
 ### 4. Admin 접근
@@ -127,3 +143,9 @@ recap/
 ## 라이선스
 
 MIT License
+
+## 운영 설정 환경변수
+
+- `OCR_PROCESSING_STUCK_MINUTES`: processing 상태 최대 허용 시간(분)
+- `CELERY_BEAT_STUCK_CHECK_MINUTES`: stuck 정리 task 실행 주기(분)
+- `OCR_RETRYABLE_ERROR_CODES`: 일괄 재처리 허용 실패 코드 목록 (쉼표 구분)
