@@ -1,8 +1,13 @@
 from unittest.mock import patch
 
+from datetime import timedelta
+from io import StringIO
+
+from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Receipt
 from .tasks import _is_non_retryable_ocr_error, process_receipt_ocr_task
@@ -166,3 +171,43 @@ class OCRTaskErrorHandlingTests(TestCase):
 		self.assertEqual(receipt.processing_status, Receipt.STATUS_FAILED)
 		self.assertEqual(receipt.processing_error_code, Receipt.ERROR_CODE_NO_IMAGE)
 		self.assertIn('Non-retryable OCR error', receipt.processing_error)
+
+	def test_task_sets_processing_started_at_during_processing(self):
+		receipt = Receipt.objects.create(image=_fake_image_file('z2.jpg'))
+
+		with patch('scanner.tasks.extract_text_from_receipt', return_value='sample text'), patch(
+			'scanner.tasks.parse_receipt_items_with_unparsed', return_value=([], [])
+		):
+			process_receipt_ocr_task.run(receipt.id)
+
+		receipt.refresh_from_db()
+		self.assertEqual(receipt.processing_status, Receipt.STATUS_COMPLETED)
+		self.assertIsNotNone(receipt.processing_started_at)
+
+
+class StuckReceiptCommandTests(TestCase):
+	def test_mark_stuck_receipts_marks_only_old_processing_rows(self):
+		now = timezone.now()
+		stuck = Receipt.objects.create(
+			image=_fake_image_file('m1.jpg'),
+			processing_status=Receipt.STATUS_PROCESSING,
+			processing_started_at=now - timedelta(minutes=40),
+		)
+		fresh = Receipt.objects.create(
+			image=_fake_image_file('m2.jpg'),
+			processing_status=Receipt.STATUS_PROCESSING,
+			processing_started_at=now - timedelta(minutes=5),
+		)
+
+		out = StringIO()
+		call_command('mark_stuck_receipts', '--minutes', '20', stdout=out)
+
+		stuck.refresh_from_db()
+		fresh.refresh_from_db()
+
+		self.assertEqual(stuck.processing_status, Receipt.STATUS_FAILED)
+		self.assertEqual(stuck.processing_error_code, Receipt.ERROR_CODE_OCR_FAILED)
+		self.assertEqual(stuck.processing_error, 'Stuck processing timeout exceeded')
+		self.assertIsNone(stuck.processing_started_at)
+
+		self.assertEqual(fresh.processing_status, Receipt.STATUS_PROCESSING)

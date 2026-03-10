@@ -37,14 +37,16 @@ def process_receipt_ocr_task(self, receipt_id: int):
         receipt.processing_error = 'No receipt image found'
         receipt.processing_attempts = self.request.retries + 1
         receipt.processing_duration_ms = elapsed_ms
-        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms'])
+        receipt.processing_started_at = None
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms', 'processing_started_at'])
         return
 
     receipt.processing_status = Receipt.STATUS_PROCESSING
     receipt.processing_error_code = Receipt.ERROR_CODE_NONE
     receipt.processing_error = ''
     receipt.processing_attempts = self.request.retries + 1
-    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts'])
+    receipt.processing_started_at = timezone.now()
+    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_started_at'])
 
     try:
         text = extract_text_from_receipt(receipt.image.path)
@@ -80,7 +82,8 @@ def process_receipt_ocr_task(self, receipt_id: int):
             receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
             receipt.processing_error = f'Non-retryable OCR error: {str(exc)[:300]}'
             receipt.processing_duration_ms = elapsed_ms
-            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_duration_ms'])
+            receipt.processing_started_at = None
+            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_duration_ms', 'processing_started_at'])
             return
 
         if current_retry < self.max_retries:
@@ -93,7 +96,8 @@ def process_receipt_ocr_task(self, receipt_id: int):
                 f'Temporary OCR error. Retry {current_retry + 1}/{self.max_retries} '
                 f'in {retry_in}s: {str(exc)[:200]}'
             )
-            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+            receipt.processing_started_at = None
+            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_started_at'])
             raise self.retry(exc=exc, countdown=retry_in)
 
         elapsed_ms = int((timezone.now() - started_at).total_seconds() * 1000)

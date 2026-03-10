@@ -38,6 +38,7 @@ class Receipt(models.Model):
     processing_error = models.TextField(blank=True)
     processing_attempts = models.PositiveIntegerField(default=0)
     processing_duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    processing_started_at = models.DateTimeField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

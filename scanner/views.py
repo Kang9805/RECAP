@@ -47,7 +47,8 @@ class ReceiptUploadView(CreateView):
             self.object.extracted_text = ''
             self.object.processing_attempts = 0
             self.object.processing_duration_ms = None
-            self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'extracted_text', 'processing_attempts', 'processing_duration_ms'])
+            self.object.processing_started_at = None
+            self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'extracted_text', 'processing_attempts', 'processing_duration_ms', 'processing_started_at'])
 
             try:
                 process_receipt_ocr_task.delay(self.object.pk)
@@ -238,7 +239,8 @@ def receipt_retry_view(request, pk):
     receipt.processing_error = ''
     receipt.processing_attempts = 0
     receipt.processing_duration_ms = None
-    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms'])
+    receipt.processing_started_at = None
+    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms', 'processing_started_at'])
 
     try:
         process_receipt_ocr_task.delay(receipt.pk)
@@ -265,7 +267,8 @@ def receipt_retry_failed_all_view(request):
         receipt.processing_error = ''
         receipt.processing_attempts = 0
         receipt.processing_duration_ms = None
-        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms'])
+        receipt.processing_started_at = None
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_attempts', 'processing_duration_ms', 'processing_started_at'])
 
         try:
             process_receipt_ocr_task.delay(receipt.pk)
