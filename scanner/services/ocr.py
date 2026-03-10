@@ -1,6 +1,7 @@
 import cv2
 import pytesseract
 import re
+from django.conf import settings
 
 try:
     from paddleocr import PaddleOCR
@@ -223,11 +224,25 @@ def _extract_text_with_paddle(image_path: str, preprocessed_candidates) -> str:
 
 
 def extract_text_from_receipt(image_path: str) -> str:
+    ocr_mode = getattr(settings, 'OCR_MODE', 'fast')
+    is_accurate_mode = ocr_mode == 'accurate'
+
     preprocessed_candidates = preprocess_receipt_image(image_path)
-    tesseract_configs = (
-        '--oem 1 --psm 6 -c preserve_interword_spaces=1',
-        '--oem 1 --psm 11 -c preserve_interword_spaces=1',
-    )
+    if is_accurate_mode:
+        tesseract_configs = (
+            '--oem 1 --psm 6 -c preserve_interword_spaces=1',
+            '--oem 1 --psm 11 -c preserve_interword_spaces=1',
+            '--oem 1 --psm 4 -c preserve_interword_spaces=1',
+        )
+        max_candidates = 3
+        early_return_score = 160
+    else:
+        tesseract_configs = (
+            '--oem 1 --psm 6 -c preserve_interword_spaces=1',
+            '--oem 1 --psm 11 -c preserve_interword_spaces=1',
+        )
+        max_candidates = 2
+        early_return_score = 120
 
     best_text = ''
     best_score = -1.0
@@ -241,10 +256,10 @@ def extract_text_from_receipt(image_path: str) -> str:
             best_score = paddle_score
             best_text = paddle_text
 
-        if paddle_score >= 120:
+        if paddle_score >= early_return_score:
             return best_text
 
-    for image in preprocessed_candidates[:2]:
+    for image in preprocessed_candidates[:max_candidates]:
         line_text = _extract_text_line_by_line(image)
         if line_text:
             line_score = _score_ocr_text(line_text)
