@@ -192,7 +192,7 @@
             <a href="{% url 'receipt-list' %}?status=failed" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
             {% for row in failed_count_by_code %}
             <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
-                {{ error_code_labels[row.processing_error_code] }} ({{ row.count }})
+                {{ row.label }} ({{ row.count }})
             </a>
             {% endfor %}
         </div>

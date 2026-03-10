@@ -1,1 +1,104 @@
+from unittest.mock import patch
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
+
+from .models import Receipt
+from .views import _get_retryable_failed_receipts_queryset
+
+
+def _fake_image_file(name='receipt.jpg'):
+	# Minimal valid payload for ImageField path tests.
+	return SimpleUploadedFile(name, b'fake-image-bytes', content_type='image/jpeg')
+
+
+class RetryableQuerysetTests(TestCase):
+	def test_get_retryable_failed_receipts_queryset_filters_expected_records(self):
+		retryable_1 = Receipt.objects.create(
+			image=_fake_image_file('r1.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+		)
+		retryable_2 = Receipt.objects.create(
+			image=_fake_image_file('r2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_ENQUEUE_FAILED,
+		)
+		Receipt.objects.create(
+			image=_fake_image_file('r3.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_NO_IMAGE,
+		)
+		Receipt.objects.create(
+			image=_fake_image_file('r4.jpg'),
+			processing_status=Receipt.STATUS_COMPLETED,
+			processing_error_code=Receipt.ERROR_CODE_NONE,
+		)
+
+		ids = set(_get_retryable_failed_receipts_queryset().values_list('id', flat=True))
+		self.assertEqual(ids, {retryable_1.id, retryable_2.id})
+
+
+class RetryViewsTests(TestCase):
+	@patch('scanner.views.process_receipt_ocr_task.delay')
+	def test_retry_failed_all_requeues_only_retryable_failed(self, delay_mock):
+		retryable = Receipt.objects.create(
+			image=_fake_image_file('x1.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+			processing_error='old error',
+		)
+		not_retryable = Receipt.objects.create(
+			image=_fake_image_file('x2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_NO_IMAGE,
+			processing_error='missing image',
+		)
+
+		response = self.client.post(reverse('receipt-retry-failed-all'))
+		self.assertEqual(response.status_code, 302)
+
+		retryable.refresh_from_db()
+		not_retryable.refresh_from_db()
+
+		self.assertEqual(retryable.processing_status, Receipt.STATUS_PENDING)
+		self.assertEqual(retryable.processing_error_code, Receipt.ERROR_CODE_NONE)
+		self.assertEqual(retryable.processing_error, '')
+
+		self.assertEqual(not_retryable.processing_status, Receipt.STATUS_FAILED)
+		self.assertEqual(not_retryable.processing_error_code, Receipt.ERROR_CODE_NO_IMAGE)
+
+		delay_mock.assert_called_once_with(retryable.pk)
+
+
+class ReceiptListFilterTests(TestCase):
+	def test_list_filters_by_status_and_error_code(self):
+		target = Receipt.objects.create(
+			image=_fake_image_file('f1.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+		)
+		Receipt.objects.create(
+			image=_fake_image_file('f2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_ENQUEUE_FAILED,
+		)
+		Receipt.objects.create(
+			image=_fake_image_file('f3.jpg'),
+			processing_status=Receipt.STATUS_COMPLETED,
+			processing_error_code=Receipt.ERROR_CODE_NONE,
+		)
+
+		response = self.client.get(
+			reverse('receipt-list'),
+			{'status': Receipt.STATUS_FAILED, 'error_code': Receipt.ERROR_CODE_OCR_FAILED},
+		)
+		self.assertEqual(response.status_code, 200)
+
+		receipts = list(response.context['receipts'])
+		self.assertEqual(len(receipts), 1)
+		self.assertEqual(receipts[0].id, target.id)
+
+		self.assertIn('status_counts', response.context)
+		self.assertIn('failed_count_by_code', response.context)

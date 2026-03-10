@@ -87,6 +87,7 @@ class ReceiptListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        error_code_labels = dict(Receipt.ERROR_CODE_CHOICES)
         context['status_counts'] = {
             'all': Receipt.objects.count(),
             Receipt.STATUS_PENDING: Receipt.objects.filter(processing_status=Receipt.STATUS_PENDING).count(),
@@ -104,8 +105,14 @@ class ReceiptListView(ListView):
             .annotate(count=Count('id'))
             .order_by('-count')
         )
-        context['failed_count_by_code'] = list(failed_by_code)
-        context['error_code_labels'] = dict(Receipt.ERROR_CODE_CHOICES)
+        context['failed_count_by_code'] = [
+            {
+                'processing_error_code': row['processing_error_code'],
+                'count': row['count'],
+                'label': error_code_labels.get(row['processing_error_code'], row['processing_error_code']),
+            }
+            for row in failed_by_code
+        ]
         context['selected_status'] = self.request.GET.get('status', '').strip()
         context['selected_error_code'] = self.request.GET.get('error_code', '').strip()
         return context
