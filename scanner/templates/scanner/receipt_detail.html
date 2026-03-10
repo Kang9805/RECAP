@@ -69,6 +69,31 @@
             border: 1px solid #ef9a9a;
             color: #8b1d1d;
         }
+        .messages {
+            margin-bottom: 14px;
+            display: grid;
+            gap: 8px;
+        }
+        .message {
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-weight: bold;
+        }
+        .message-success {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border: 1px solid #b7dfbc;
+        }
+        .message-error {
+            background: #ffebee;
+            color: #b71c1c;
+            border: 1px solid #ef9a9a;
+        }
+        .message-info {
+            background: #e3f2fd;
+            color: #0d47a1;
+            border: 1px solid #90caf9;
+        }
         .retry-action {
             margin-top: 10px;
         }
@@ -193,6 +218,14 @@
 <body>
     <div class="container">
         <h1>영수증 상세</h1>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
         <div class="receipt-info">
             <p><strong>ID:</strong> #{{ receipt.id }}</p>

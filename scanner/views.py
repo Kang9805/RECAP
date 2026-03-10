@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django.db.models import Count
 
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, DetailView
@@ -174,6 +175,7 @@ def receipt_retry_view(request, pk):
         receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
         receipt.processing_error = 'No receipt image found'
         receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+        messages.error(request, '이미지 파일이 없어 재처리를 시작할 수 없습니다.')
         return redirect('receipt-detail', pk=receipt.pk)
 
     receipt.processing_status = Receipt.STATUS_PENDING
@@ -185,11 +187,13 @@ def receipt_retry_view(request, pk):
 
     try:
         process_receipt_ocr_task.delay(receipt.pk)
+        messages.success(request, f'영수증 #{receipt.pk} 재처리를 시작했습니다.')
     except Exception as exc:
         receipt.processing_status = Receipt.STATUS_FAILED
         receipt.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
         receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
         receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+        messages.error(request, f'영수증 #{receipt.pk} 재처리 큐 등록에 실패했습니다.')
 
     return redirect('receipt-detail', pk=receipt.pk)
 
@@ -197,6 +201,8 @@ def receipt_retry_view(request, pk):
 @require_POST
 def receipt_retry_failed_all_view(request):
     failed_receipts = _get_retryable_failed_receipts_queryset().order_by('-uploaded_at')[:MAX_BULK_RETRY_COUNT]
+    queued_count = 0
+    enqueue_failed_count = 0
 
     for receipt in failed_receipts:
         receipt.processing_status = Receipt.STATUS_PENDING
@@ -208,11 +214,20 @@ def receipt_retry_failed_all_view(request):
 
         try:
             process_receipt_ocr_task.delay(receipt.pk)
+            queued_count += 1
         except Exception as exc:
             receipt.processing_status = Receipt.STATUS_FAILED
             receipt.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
             receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
             receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+            enqueue_failed_count += 1
+
+    if queued_count:
+        messages.success(request, f'실패건 {queued_count}건 재처리를 시작했습니다.')
+    if enqueue_failed_count:
+        messages.error(request, f'큐 등록 실패 {enqueue_failed_count}건이 있습니다.')
+    if not queued_count and not enqueue_failed_count:
+        messages.info(request, '재처리 가능한 실패건이 없습니다.')
 
     return redirect('receipt-list')
 
