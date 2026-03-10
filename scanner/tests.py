@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Receipt
+from .tasks import _is_non_retryable_ocr_error, process_receipt_ocr_task
 from .views import _get_retryable_failed_receipts_queryset
 
 
@@ -102,3 +103,20 @@ class ReceiptListFilterTests(TestCase):
 
 		self.assertIn('status_counts', response.context)
 		self.assertIn('failed_count_by_code', response.context)
+
+
+class OCRTaskErrorHandlingTests(TestCase):
+	def test_is_non_retryable_ocr_error_detects_missing_image_value_error(self):
+		exc = ValueError('Failed to load image: /tmp/missing.jpg')
+		self.assertTrue(_is_non_retryable_ocr_error(exc))
+
+	def test_task_marks_no_image_code_without_retry_for_missing_image_error(self):
+		receipt = Receipt.objects.create(image=_fake_image_file('z1.jpg'))
+
+		with patch('scanner.tasks.extract_text_from_receipt', side_effect=ValueError('Failed to load image: /tmp/missing.jpg')):
+			process_receipt_ocr_task.run(receipt.id)
+
+		receipt.refresh_from_db()
+		self.assertEqual(receipt.processing_status, Receipt.STATUS_FAILED)
+		self.assertEqual(receipt.processing_error_code, Receipt.ERROR_CODE_NO_IMAGE)
+		self.assertIn('Non-retryable OCR error', receipt.processing_error)

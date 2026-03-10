@@ -12,6 +12,12 @@ MAX_RETRIES = 3
 RETRY_BASE_SECONDS = 2
 
 
+def _is_non_retryable_ocr_error(exc: Exception) -> bool:
+    if isinstance(exc, ValueError) and 'Failed to load image:' in str(exc):
+        return True
+    return False
+
+
 @shared_task(bind=True, max_retries=MAX_RETRIES)
 def process_receipt_ocr_task(self, receipt_id: int):
     started_at = timezone.now()
@@ -64,6 +70,15 @@ def process_receipt_ocr_task(self, receipt_id: int):
                 ReceiptItem.objects.bulk_create(receipt_items)
     except Exception as exc:
         current_retry = self.request.retries
+
+        if _is_non_retryable_ocr_error(exc):
+            elapsed_ms = int((timezone.now() - started_at).total_seconds() * 1000)
+            receipt.processing_status = Receipt.STATUS_FAILED
+            receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
+            receipt.processing_error = f'Non-retryable OCR error: {str(exc)[:300]}'
+            receipt.processing_duration_ms = elapsed_ms
+            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'processing_duration_ms'])
+            return
 
         if current_retry < self.max_retries:
             retry_in = RETRY_BASE_SECONDS * (2 ** current_retry)
