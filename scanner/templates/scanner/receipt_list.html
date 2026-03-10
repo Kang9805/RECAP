@@ -41,6 +41,46 @@
             align-items: center;
             margin-bottom: 20px;
         }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #e3e7eb;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+        .stat-card strong {
+            display: block;
+            font-size: 18px;
+            margin-top: 4px;
+            color: #222;
+        }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        .filter-link {
+            display: inline-block;
+            padding: 6px 10px;
+            border: 1px solid #d0d7de;
+            border-radius: 999px;
+            color: #2d3a4a;
+            text-decoration: none;
+            font-weight: bold;
+            background: white;
+        }
+        .filter-link.active {
+            background: #2d7ef7;
+            border-color: #2d7ef7;
+            color: white;
+        }
         .bulk-retry-form {
             margin: 0;
         }
@@ -134,6 +174,27 @@
                 <button type="submit" class="btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
+        </div>
+
+        <div class="dashboard">
+            <div class="stat-card">전체<strong>{{ status_counts.all }}</strong></div>
+            <div class="stat-card">대기중<strong>{{ status_counts.pending }}</strong></div>
+            <div class="stat-card">처리중<strong>{{ status_counts.processing }}</strong></div>
+            <div class="stat-card">완료<strong>{{ status_counts.completed }}</strong></div>
+            <div class="stat-card">실패<strong>{{ status_counts.failed }}</strong></div>
+        </div>
+
+        <div class="filters">
+            <a href="{% url 'receipt-list' %}" class="filter-link {% if not selected_status and not selected_error_code %}active{% endif %}">전체</a>
+            <a href="{% url 'receipt-list' %}?status=pending" class="filter-link {% if selected_status == 'pending' %}active{% endif %}">대기중</a>
+            <a href="{% url 'receipt-list' %}?status=processing" class="filter-link {% if selected_status == 'processing' %}active{% endif %}">처리중</a>
+            <a href="{% url 'receipt-list' %}?status=completed" class="filter-link {% if selected_status == 'completed' %}active{% endif %}">완료</a>
+            <a href="{% url 'receipt-list' %}?status=failed" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
+            {% for row in failed_count_by_code %}
+            <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
+                {{ error_code_labels[row.processing_error_code] }} ({{ row.count }})
+            </a>
+            {% endfor %}
         </div>
         
         {% if receipts %}

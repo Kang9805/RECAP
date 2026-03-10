@@ -59,8 +59,41 @@ class ReceiptListView(ListView):
     context_object_name = 'receipts'
     ordering = ['-uploaded_at']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        status = self.request.GET.get('status', '').strip()
+        error_code = self.request.GET.get('error_code', '').strip()
+
+        valid_statuses = {
+            Receipt.STATUS_PENDING,
+            Receipt.STATUS_PROCESSING,
+            Receipt.STATUS_COMPLETED,
+            Receipt.STATUS_FAILED,
+        }
+        valid_error_codes = {
+            Receipt.ERROR_CODE_NO_IMAGE,
+            Receipt.ERROR_CODE_ENQUEUE_FAILED,
+            Receipt.ERROR_CODE_OCR_RETRY,
+            Receipt.ERROR_CODE_OCR_FAILED,
+        }
+
+        if status in valid_statuses:
+            queryset = queryset.filter(processing_status=status)
+        if error_code in valid_error_codes:
+            queryset = queryset.filter(processing_error_code=error_code)
+
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['status_counts'] = {
+            'all': Receipt.objects.count(),
+            Receipt.STATUS_PENDING: Receipt.objects.filter(processing_status=Receipt.STATUS_PENDING).count(),
+            Receipt.STATUS_PROCESSING: Receipt.objects.filter(processing_status=Receipt.STATUS_PROCESSING).count(),
+            Receipt.STATUS_COMPLETED: Receipt.objects.filter(processing_status=Receipt.STATUS_COMPLETED).count(),
+            Receipt.STATUS_FAILED: Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count(),
+        }
         context['failed_count'] = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
         context['retryable_failed_count'] = _get_retryable_failed_receipts_queryset().count()
         failed_by_code = (
@@ -72,6 +105,9 @@ class ReceiptListView(ListView):
             .order_by('-count')
         )
         context['failed_count_by_code'] = list(failed_by_code)
+        context['error_code_labels'] = dict(Receipt.ERROR_CODE_CHOICES)
+        context['selected_status'] = self.request.GET.get('status', '').strip()
+        context['selected_error_code'] = self.request.GET.get('error_code', '').strip()
         return context
 
 
