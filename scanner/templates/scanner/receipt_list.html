@@ -35,6 +35,27 @@
         .btn-upload:hover {
             background-color: #45a049;
         }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .bulk-retry-form {
+            margin: 0;
+        }
+        .btn-bulk-retry {
+            border: none;
+            border-radius: 4px;
+            background-color: #1b5e20;
+            color: white;
+            font-weight: bold;
+            padding: 12px 16px;
+            cursor: pointer;
+        }
+        .btn-bulk-retry:hover {
+            background-color: #154a19;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -105,7 +126,15 @@
     <div class="container">
         <h1>영수증 목록</h1>
         
-        <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
+        <div class="toolbar">
+            <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
+            {% if failed_count %}
+            <form method="post" action="{% url 'receipt-retry-failed-all' %}" class="bulk-retry-form" onsubmit="return confirm('실패한 영수증 {{ failed_count }}건을 재처리할까요?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-bulk-retry">실패건 일괄 재처리 ({{ failed_count }})</button>
+            </form>
+            {% endif %}
+        </div>
         
         {% if receipts %}
         <table>

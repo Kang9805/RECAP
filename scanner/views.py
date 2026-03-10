@@ -44,6 +44,11 @@ class ReceiptListView(ListView):
     context_object_name = 'receipts'
     ordering = ['-uploaded_at']
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['failed_count'] = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
+        return context
+
 
 class ReceiptDetailView(DetailView):
     model = Receipt
@@ -112,6 +117,25 @@ def receipt_retry_view(request, pk):
         receipt.save(update_fields=['processing_status', 'processing_error'])
 
     return redirect('receipt-detail', pk=receipt.pk)
+
+
+@require_POST
+def receipt_retry_failed_all_view(request):
+    failed_receipts = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).exclude(image='')
+
+    for receipt in failed_receipts:
+        receipt.processing_status = Receipt.STATUS_PENDING
+        receipt.processing_error = ''
+        receipt.save(update_fields=['processing_status', 'processing_error'])
+
+        try:
+            process_receipt_ocr_task.delay(receipt.pk)
+        except Exception as exc:
+            receipt.processing_status = Receipt.STATUS_FAILED
+            receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
+            receipt.save(update_fields=['processing_status', 'processing_error'])
+
+    return redirect('receipt-list')
 
 
 @require_POST
