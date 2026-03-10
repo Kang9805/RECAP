@@ -72,6 +72,10 @@
             gap: 10px;
             margin-bottom: 16px;
         }
+        .dashboard.secondary {
+            margin-top: -6px;
+            margin-bottom: 16px;
+        }
         .stat-card {
             background: #f8f9fa;
             border: 1px solid #e3e7eb;
@@ -215,6 +219,29 @@
             <div class="stat-card">처리중<strong>{{ status_counts.processing }}</strong></div>
             <div class="stat-card">완료<strong>{{ status_counts.completed }}</strong></div>
             <div class="stat-card">실패<strong>{{ status_counts.failed }}</strong></div>
+        </div>
+
+        <div class="dashboard secondary">
+            <div class="stat-card">
+                성공률
+                <strong>{{ kpi.success_rate }}%</strong>
+            </div>
+            <div class="stat-card">
+                평균 처리시간
+                <strong>{% if kpi.avg_duration_ms %}{{ kpi.avg_duration_ms }} ms{% else %}-{% endif %}</strong>
+            </div>
+            <div class="stat-card">
+                24h 업로드
+                <strong>{{ kpi.recent.uploaded }}</strong>
+            </div>
+            <div class="stat-card">
+                24h 완료
+                <strong>{{ kpi.recent.completed }}</strong>
+            </div>
+            <div class="stat-card">
+                24h 실패
+                <strong>{{ kpi.recent.failed }}</strong>
+            </div>
         </div>
 
         <div class="filters">

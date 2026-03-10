@@ -1,5 +1,8 @@
 from decimal import Decimal, InvalidOperation
-from django.db.models import Count
+from datetime import timedelta
+
+from django.db.models import Avg, Count
+from django.utils import timezone
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
@@ -90,16 +93,52 @@ class ReceiptListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        day_ago = now - timedelta(hours=24)
+
         error_code_labels = dict(Receipt.ERROR_CODE_CHOICES)
+        total_count = Receipt.objects.count()
+        pending_count = Receipt.objects.filter(processing_status=Receipt.STATUS_PENDING).count()
+        processing_count = Receipt.objects.filter(processing_status=Receipt.STATUS_PROCESSING).count()
+        completed_count = Receipt.objects.filter(processing_status=Receipt.STATUS_COMPLETED).count()
+        failed_count = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
+
         context['status_counts'] = {
-            'all': Receipt.objects.count(),
-            Receipt.STATUS_PENDING: Receipt.objects.filter(processing_status=Receipt.STATUS_PENDING).count(),
-            Receipt.STATUS_PROCESSING: Receipt.objects.filter(processing_status=Receipt.STATUS_PROCESSING).count(),
-            Receipt.STATUS_COMPLETED: Receipt.objects.filter(processing_status=Receipt.STATUS_COMPLETED).count(),
-            Receipt.STATUS_FAILED: Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count(),
+            'all': total_count,
+            Receipt.STATUS_PENDING: pending_count,
+            Receipt.STATUS_PROCESSING: processing_count,
+            Receipt.STATUS_COMPLETED: completed_count,
+            Receipt.STATUS_FAILED: failed_count,
         }
-        context['failed_count'] = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
+        context['failed_count'] = failed_count
         context['retryable_failed_count'] = _get_retryable_failed_receipts_queryset().count()
+
+        avg_duration = Receipt.objects.filter(
+            processing_status=Receipt.STATUS_COMPLETED,
+            processing_duration_ms__isnull=False,
+        ).aggregate(value=Avg('processing_duration_ms'))['value']
+
+        completed_or_failed = completed_count + failed_count
+        success_rate = round((completed_count / completed_or_failed) * 100, 1) if completed_or_failed else 0.0
+
+        recent_counts = {
+            'completed': Receipt.objects.filter(
+                processing_status=Receipt.STATUS_COMPLETED,
+                uploaded_at__gte=day_ago,
+            ).count(),
+            'failed': Receipt.objects.filter(
+                processing_status=Receipt.STATUS_FAILED,
+                uploaded_at__gte=day_ago,
+            ).count(),
+            'uploaded': Receipt.objects.filter(uploaded_at__gte=day_ago).count(),
+        }
+
+        context['kpi'] = {
+            'avg_duration_ms': int(avg_duration) if avg_duration else None,
+            'success_rate': success_rate,
+            'recent': recent_counts,
+        }
+
         failed_by_code = (
             Receipt.objects
             .filter(processing_status=Receipt.STATUS_FAILED)
