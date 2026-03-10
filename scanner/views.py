@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from django.db.models import Count
 
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
@@ -24,16 +25,18 @@ class ReceiptUploadView(CreateView):
 
         if self.object.image:
             self.object.processing_status = Receipt.STATUS_PENDING
+            self.object.processing_error_code = Receipt.ERROR_CODE_NONE
             self.object.processing_error = ''
             self.object.extracted_text = ''
-            self.object.save(update_fields=['processing_status', 'processing_error', 'extracted_text'])
+            self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'extracted_text'])
 
             try:
                 process_receipt_ocr_task.delay(self.object.pk)
             except Exception as exc:
                 self.object.processing_status = Receipt.STATUS_FAILED
+                self.object.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
                 self.object.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
-                self.object.save(update_fields=['processing_status', 'processing_error'])
+                self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
         return response
 
@@ -47,6 +50,15 @@ class ReceiptListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['failed_count'] = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
+        failed_by_code = (
+            Receipt.objects
+            .filter(processing_status=Receipt.STATUS_FAILED)
+            .exclude(processing_error_code=Receipt.ERROR_CODE_NONE)
+            .values('processing_error_code')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        context['failed_count_by_code'] = list(failed_by_code)
         return context
 
 
@@ -101,20 +113,23 @@ def receipt_retry_view(request, pk):
 
     if not receipt.image:
         receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
         receipt.processing_error = 'No receipt image found'
-        receipt.save(update_fields=['processing_status', 'processing_error'])
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
         return redirect('receipt-detail', pk=receipt.pk)
 
     receipt.processing_status = Receipt.STATUS_PENDING
+    receipt.processing_error_code = Receipt.ERROR_CODE_NONE
     receipt.processing_error = ''
-    receipt.save(update_fields=['processing_status', 'processing_error'])
+    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
     try:
         process_receipt_ocr_task.delay(receipt.pk)
     except Exception as exc:
         receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
         receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
-        receipt.save(update_fields=['processing_status', 'processing_error'])
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
     return redirect('receipt-detail', pk=receipt.pk)
 
@@ -125,15 +140,17 @@ def receipt_retry_failed_all_view(request):
 
     for receipt in failed_receipts:
         receipt.processing_status = Receipt.STATUS_PENDING
+        receipt.processing_error_code = Receipt.ERROR_CODE_NONE
         receipt.processing_error = ''
-        receipt.save(update_fields=['processing_status', 'processing_error'])
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
         try:
             process_receipt_ocr_task.delay(receipt.pk)
         except Exception as exc:
             receipt.processing_status = Receipt.STATUS_FAILED
+            receipt.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
             receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
-            receipt.save(update_fields=['processing_status', 'processing_error'])
+            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
     return redirect('receipt-list')
 

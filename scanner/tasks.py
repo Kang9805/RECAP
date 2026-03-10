@@ -20,13 +20,15 @@ def process_receipt_ocr_task(self, receipt_id: int):
 
     if not receipt.image:
         receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error_code = Receipt.ERROR_CODE_NO_IMAGE
         receipt.processing_error = 'No receipt image found'
-        receipt.save(update_fields=['processing_status', 'processing_error'])
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
         return
 
     receipt.processing_status = Receipt.STATUS_PROCESSING
+    receipt.processing_error_code = Receipt.ERROR_CODE_NONE
     receipt.processing_error = ''
-    receipt.save(update_fields=['processing_status', 'processing_error'])
+    receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
 
     try:
         text = extract_text_from_receipt(receipt.image.path)
@@ -35,8 +37,9 @@ def process_receipt_ocr_task(self, receipt_id: int):
         with transaction.atomic():
             receipt.extracted_text = text
             receipt.processing_status = Receipt.STATUS_COMPLETED
+            receipt.processing_error_code = Receipt.ERROR_CODE_NONE
             receipt.processing_error = ''
-            receipt.save(update_fields=['extracted_text', 'processing_status', 'processing_error'])
+            receipt.save(update_fields=['extracted_text', 'processing_status', 'processing_error_code', 'processing_error'])
 
             receipt.items.all().delete()
             receipt_items = [
@@ -56,13 +59,15 @@ def process_receipt_ocr_task(self, receipt_id: int):
         if current_retry < self.max_retries:
             retry_in = RETRY_BASE_SECONDS * (2 ** current_retry)
             receipt.processing_status = Receipt.STATUS_PENDING
+            receipt.processing_error_code = Receipt.ERROR_CODE_OCR_RETRY
             receipt.processing_error = (
                 f'Temporary OCR error. Retry {current_retry + 1}/{self.max_retries} '
                 f'in {retry_in}s: {str(exc)[:200]}'
             )
-            receipt.save(update_fields=['processing_status', 'processing_error'])
+            receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
             raise self.retry(exc=exc, countdown=retry_in)
 
         receipt.processing_status = Receipt.STATUS_FAILED
+        receipt.processing_error_code = Receipt.ERROR_CODE_OCR_FAILED
         receipt.processing_error = f'OCR failed after retries: {str(exc)[:300]}'
-        receipt.save(update_fields=['processing_status', 'processing_error'])
+        receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])

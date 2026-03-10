@@ -13,9 +13,28 @@ class Receipt(models.Model):
         (STATUS_FAILED, 'Failed'),
     )
 
+    ERROR_CODE_NONE = ''
+    ERROR_CODE_NO_IMAGE = 'no_image'
+    ERROR_CODE_ENQUEUE_FAILED = 'enqueue_failed'
+    ERROR_CODE_OCR_RETRY = 'ocr_retry'
+    ERROR_CODE_OCR_FAILED = 'ocr_failed'
+    ERROR_CODE_CHOICES = (
+        (ERROR_CODE_NONE, 'None'),
+        (ERROR_CODE_NO_IMAGE, 'No image'),
+        (ERROR_CODE_ENQUEUE_FAILED, 'Task enqueue failed'),
+        (ERROR_CODE_OCR_RETRY, 'OCR retrying'),
+        (ERROR_CODE_OCR_FAILED, 'OCR failed'),
+    )
+
     image = models.ImageField(upload_to='receipts/')
     extracted_text = models.TextField(blank=True)
     processing_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    processing_error_code = models.CharField(
+        max_length=30,
+        choices=ERROR_CODE_CHOICES,
+        blank=True,
+        default=ERROR_CODE_NONE,
+    )
     processing_error = models.TextField(blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
