@@ -158,3 +158,7 @@ CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', '300'))
 OCR_MODE = os.getenv('OCR_MODE', 'fast').strip().lower()
 if OCR_MODE not in {'fast', 'accurate'}:
     OCR_MODE = 'fast'
+
+OCR_TASK_MAX_RETRIES = int(os.getenv('OCR_TASK_MAX_RETRIES', '3'))
+OCR_TASK_RETRY_BASE_SECONDS = int(os.getenv('OCR_TASK_RETRY_BASE_SECONDS', '2'))
+OCR_TASK_RETRY_JITTER_SECONDS = int(os.getenv('OCR_TASK_RETRY_JITTER_SECONDS', '1'))

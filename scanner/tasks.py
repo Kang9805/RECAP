@@ -1,5 +1,7 @@
 from django.db import transaction
+from django.conf import settings
 from django.utils import timezone
+import random
 
 from celery import shared_task
 
@@ -8,8 +10,9 @@ from .services.ocr import extract_text_from_receipt
 from .services.parser import parse_receipt_items_with_unparsed
 
 
-MAX_RETRIES = 3
-RETRY_BASE_SECONDS = 2
+MAX_RETRIES = max(0, int(getattr(settings, 'OCR_TASK_MAX_RETRIES', 3)))
+RETRY_BASE_SECONDS = max(1, int(getattr(settings, 'OCR_TASK_RETRY_BASE_SECONDS', 2)))
+RETRY_JITTER_SECONDS = max(0, int(getattr(settings, 'OCR_TASK_RETRY_JITTER_SECONDS', 1)))
 
 
 def _is_non_retryable_ocr_error(exc: Exception) -> bool:
@@ -82,6 +85,8 @@ def process_receipt_ocr_task(self, receipt_id: int):
 
         if current_retry < self.max_retries:
             retry_in = RETRY_BASE_SECONDS * (2 ** current_retry)
+            if RETRY_JITTER_SECONDS > 0:
+                retry_in += random.randint(0, RETRY_JITTER_SECONDS)
             receipt.processing_status = Receipt.STATUS_PENDING
             receipt.processing_error_code = Receipt.ERROR_CODE_OCR_RETRY
             receipt.processing_error = (
