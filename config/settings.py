@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -163,3 +164,16 @@ OCR_TASK_MAX_RETRIES = int(os.getenv('OCR_TASK_MAX_RETRIES', '3'))
 OCR_TASK_RETRY_BASE_SECONDS = int(os.getenv('OCR_TASK_RETRY_BASE_SECONDS', '2'))
 OCR_TASK_RETRY_JITTER_SECONDS = int(os.getenv('OCR_TASK_RETRY_JITTER_SECONDS', '1'))
 OCR_PROCESSING_STUCK_MINUTES = int(os.getenv('OCR_PROCESSING_STUCK_MINUTES', '20'))
+
+OCR_RETRYABLE_ERROR_CODES = _env_list('OCR_RETRYABLE_ERROR_CODES') or [
+    'ocr_failed',
+    'enqueue_failed',
+]
+
+CELERY_BEAT_STUCK_CHECK_MINUTES = max(1, min(59, int(os.getenv('CELERY_BEAT_STUCK_CHECK_MINUTES', '5'))))
+CELERY_BEAT_SCHEDULE = {
+    'mark-stuck-receipts': {
+        'task': 'scanner.tasks.mark_stuck_receipts_task',
+        'schedule': crontab(minute=f'*/{CELERY_BEAT_STUCK_CHECK_MINUTES}'),
+    },
+}

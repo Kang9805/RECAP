@@ -1,10 +1,7 @@
-from datetime import timedelta
-
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
-from scanner.models import Receipt
+from scanner.tasks import mark_stuck_receipts_as_failed
 
 
 class Command(BaseCommand):
@@ -23,20 +20,7 @@ class Command(BaseCommand):
         if threshold_minutes is None:
             threshold_minutes = int(getattr(settings, 'OCR_PROCESSING_STUCK_MINUTES', 20))
 
-        cutoff = timezone.now() - timedelta(minutes=threshold_minutes)
-
-        stuck_receipts = Receipt.objects.filter(
-            processing_status=Receipt.STATUS_PROCESSING,
-            processing_started_at__isnull=False,
-            processing_started_at__lte=cutoff,
-        )
-
-        updated = stuck_receipts.update(
-            processing_status=Receipt.STATUS_FAILED,
-            processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
-            processing_error='Stuck processing timeout exceeded',
-            processing_started_at=None,
-        )
+        updated = mark_stuck_receipts_as_failed(threshold_minutes=threshold_minutes)
 
         self.stdout.write(
             self.style.SUCCESS(

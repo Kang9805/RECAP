@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import timedelta
 
 from django.db.models import Avg, Count
+from django.conf import settings
 from django.utils import timezone
 
 from django.contrib import messages
@@ -21,10 +22,11 @@ MAX_BULK_RETRY_COUNT = 100
 
 
 def _get_retryable_failed_receipts_queryset():
-    retryable_error_codes = (
+    configured_codes = getattr(settings, 'OCR_RETRYABLE_ERROR_CODES', None)
+    retryable_error_codes = tuple(configured_codes or (
         Receipt.ERROR_CODE_OCR_FAILED,
         Receipt.ERROR_CODE_ENQUEUE_FAILED,
-    )
+    ))
     return Receipt.objects.filter(
         processing_status=Receipt.STATUS_FAILED,
         processing_error_code__in=retryable_error_codes,

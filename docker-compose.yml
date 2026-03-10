@@ -63,5 +63,26 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
 
+  beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST:-db}
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+
 volumes:
   postgres_data:
