@@ -5,6 +5,7 @@ from django.db.models import Avg, Count
 from django.utils import timezone
 
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, DetailView
@@ -173,6 +174,21 @@ class ReceiptDetailView(DetailView):
             unparsed_lines = []
         context['unparsed_lines'] = unparsed_lines
         return context
+
+
+def receipt_status_api_view(request, pk):
+    receipt = get_object_or_404(Receipt, pk=pk)
+    return JsonResponse(
+        {
+            'id': receipt.pk,
+            'status': receipt.processing_status,
+            'error_code': receipt.processing_error_code,
+            'error': receipt.processing_error,
+            'attempts': receipt.processing_attempts,
+            'duration_ms': receipt.processing_duration_ms,
+            'items_count': receipt.items.count(),
+        }
+    )
 
 
 def _parse_item_form(request):
