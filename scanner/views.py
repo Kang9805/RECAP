@@ -225,6 +225,35 @@ def receipt_delete_view(request, pk):
 
 
 @require_POST
+def receipt_delete_selected_view(request):
+    selected_ids_raw = request.POST.getlist('selected_receipt_ids')
+    if not selected_ids_raw:
+        messages.info(request, '선택된 영수증이 없습니다.')
+        return redirect('receipt-list')
+
+    selected_ids = []
+    for value in selected_ids_raw:
+        try:
+            selected_ids.append(int(value))
+        except (TypeError, ValueError):
+            continue
+
+    if not selected_ids:
+        messages.error(request, '유효한 선택 항목이 없습니다.')
+        return redirect('receipt-list')
+
+    queryset = Receipt.objects.filter(pk__in=selected_ids)
+    receipt_count = queryset.count()
+    queryset.delete()
+    if receipt_count:
+        messages.success(request, f'{receipt_count}건의 영수증을 삭제했습니다.')
+    else:
+        messages.info(request, '삭제할 영수증이 없습니다.')
+
+    return redirect('receipt-list')
+
+
+@require_POST
 def receipt_retry_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
 

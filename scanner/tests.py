@@ -95,6 +95,30 @@ class RetryViewsTests(TestCase):
 		delay_mock.assert_called_once_with(retryable.pk)
 
 
+class BulkDeleteViewsTests(TestCase):
+	def test_delete_selected_deletes_only_checked_receipts(self):
+		target_1 = Receipt.objects.create(image=_fake_image_file('d1.jpg'))
+		target_2 = Receipt.objects.create(image=_fake_image_file('d2.jpg'))
+		keep = Receipt.objects.create(image=_fake_image_file('d3.jpg'))
+
+		response = self.client.post(
+			reverse('receipt-delete-selected'),
+			{'selected_receipt_ids': [str(target_1.pk), str(target_2.pk)]},
+		)
+		self.assertEqual(response.status_code, 302)
+
+		self.assertFalse(Receipt.objects.filter(pk=target_1.pk).exists())
+		self.assertFalse(Receipt.objects.filter(pk=target_2.pk).exists())
+		self.assertTrue(Receipt.objects.filter(pk=keep.pk).exists())
+
+	def test_delete_selected_without_selection_keeps_all_receipts(self):
+		receipt = Receipt.objects.create(image=_fake_image_file('d4.jpg'))
+
+		response = self.client.post(reverse('receipt-delete-selected'), {})
+		self.assertEqual(response.status_code, 302)
+		self.assertTrue(Receipt.objects.filter(pk=receipt.pk).exists())
+
+
 class ReceiptListFilterTests(TestCase):
 	def test_list_filters_by_status_and_error_code(self):
 		target = Receipt.objects.create(

@@ -205,6 +205,22 @@
             gap: 12px;
             align-items: center;
         }
+        .bulk-select-form {
+            margin: 0;
+        }
+        .checkbox-col {
+            width: 54px;
+            text-align: center;
+        }
+        .checkbox-cell {
+            text-align: center;
+        }
+        .row-checkbox,
+        .master-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -295,6 +311,10 @@
                 <button type="submit" class="btn btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
+            <form method="post" action="{% url 'receipt-delete-selected' %}" class="bulk-select-form" onsubmit="return confirm('선택한 영수증을 삭제할까요?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-bulk-retry" id="bulk-delete-btn" disabled>선택 삭제</button>
+            </form>
         </div>
 
         <div class="dashboard">
@@ -342,11 +362,13 @@
         </div>
         
         {% if receipts %}
+        <form method="post" action="{% url 'receipt-delete-selected' %}" id="bulk-delete-form">
+        {% csrf_token %}
         <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th class="checkbox-col"><input type="checkbox" class="master-checkbox" id="select-all-receipts" aria-label="전체 선택"></th>
                     <th>업로드 날짜</th>
                     <th>처리 상태</th>
                     <th>시도</th>
@@ -358,7 +380,9 @@
             <tbody>
                 {% for receipt in receipts %}
                 <tr>
-                    <td>#{{ receipt.id }}</td>
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="row-checkbox" name="selected_receipt_ids" value="{{ receipt.id }}" aria-label="영수증 {{ receipt.id }} 선택">
+                    </td>
                     <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
                     <td>
                         {% if receipt.processing_status == 'completed' %}
@@ -400,6 +424,7 @@
             </tbody>
         </table>
         </div>
+        </form>
         {% else %}
         <div class="empty">
             <p>등록된 영수증이 없습니다.</p>
@@ -407,5 +432,57 @@
         </div>
         {% endif %}
     </div>
+    <script>
+        (function () {
+            const master = document.getElementById('select-all-receipts');
+            const rowCheckboxes = Array.from(document.querySelectorAll('.row-checkbox'));
+            const toolbarDeleteButton = document.getElementById('bulk-delete-btn');
+
+            function updateDeleteButtonState() {
+                if (!toolbarDeleteButton) {
+                    return;
+                }
+                const selectedCount = rowCheckboxes.filter(function (input) { return input.checked; }).length;
+                toolbarDeleteButton.disabled = selectedCount === 0;
+                toolbarDeleteButton.textContent = selectedCount > 0 ? '선택 삭제 (' + selectedCount + ')' : '선택 삭제';
+            }
+
+            if (master) {
+                master.addEventListener('change', function () {
+                    rowCheckboxes.forEach(function (input) {
+                        input.checked = master.checked;
+                    });
+                    updateDeleteButtonState();
+                });
+            }
+
+            rowCheckboxes.forEach(function (input) {
+                input.addEventListener('change', function () {
+                    if (!master) {
+                        updateDeleteButtonState();
+                        return;
+                    }
+                    master.checked = rowCheckboxes.length > 0 && rowCheckboxes.every(function (item) { return item.checked; });
+                    updateDeleteButtonState();
+                });
+            });
+
+            const bulkDeleteButton = document.getElementById('bulk-delete-btn');
+            const bulkDeleteForm = document.getElementById('bulk-delete-form');
+            if (bulkDeleteButton && bulkDeleteForm) {
+                bulkDeleteButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    if (bulkDeleteButton.disabled) {
+                        return;
+                    }
+                    if (confirm('선택한 영수증을 삭제할까요?')) {
+                        bulkDeleteForm.submit();
+                    }
+                });
+            }
+
+            updateDeleteButtonState();
+        })();
+    </script>
 </body>
 </html>
