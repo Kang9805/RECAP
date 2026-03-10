@@ -5,35 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>영수증 목록</title>
     <style>
+        :root {
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --panel: #ffffff;
+            --line: #e5e7eb;
+            --brand: #0f766e;
+            --brand-dark: #115e59;
+            --accent: #f59e0b;
+            --danger: #b91c1c;
+            --shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
+            --radius-xl: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 1000px;
-            margin: 30px auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            margin: 0;
+            padding: 28px 16px 40px;
+            color: var(--ink);
+            font-family: "Pretendard", "SUIT", "Noto Sans KR", sans-serif;
+            background:
+                radial-gradient(circle at 14% 18%, #d1fae5 0%, rgba(209, 250, 229, 0) 45%),
+                radial-gradient(circle at 86% 2%, #fef3c7 0%, rgba(254, 243, 199, 0) 40%),
+                linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
         }
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1120px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            padding: 28px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow);
         }
         h1 {
-            color: #333;
-            text-align: center;
+            margin: 0;
+            font-size: clamp(26px, 3.2vw, 34px);
+            letter-spacing: -0.03em;
+        }
+        .lead {
+            margin: 8px 0 0;
+            color: var(--muted);
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 22px;
         }
         .btn-upload {
             display: inline-block;
-            padding: 12px 20px;
-            background-color: #4CAF50;
-            color: white;
+            padding: 11px 16px;
+            background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
+            color: #fff;
             text-decoration: none;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            font-weight: bold;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            box-shadow: 0 10px 20px rgba(20, 184, 166, 0.24);
+            transition: transform .15s ease, box-shadow .15s ease;
         }
         .btn-upload:hover {
-            background-color: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 14px 24px rgba(20, 184, 166, 0.3);
         }
         .messages {
             margin-bottom: 14px;
@@ -41,53 +77,55 @@
             gap: 8px;
         }
         .message {
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             padding: 10px 12px;
-            font-weight: bold;
+            font-weight: 700;
         }
         .message-success {
-            background: #e8f5e9;
-            color: #1b5e20;
-            border: 1px solid #b7dfbc;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
         }
         .message-error {
-            background: #ffebee;
-            color: #b71c1c;
-            border: 1px solid #ef9a9a;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
         }
         .message-info {
-            background: #e3f2fd;
-            color: #0d47a1;
-            border: 1px solid #90caf9;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
         }
         .toolbar {
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 10px 12px;
             align-items: center;
             margin-bottom: 20px;
         }
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+            gap: 12px;
             margin-bottom: 16px;
         }
         .dashboard.secondary {
-            margin-top: -6px;
+            margin-top: 0;
             margin-bottom: 16px;
         }
         .stat-card {
-            background: #f8f9fa;
-            border: 1px solid #e3e7eb;
-            border-radius: 6px;
-            padding: 10px;
-            text-align: center;
+            background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: left;
+            color: var(--muted);
         }
         .stat-card strong {
             display: block;
-            font-size: 18px;
-            margin-top: 4px;
-            color: #222;
+            font-size: 22px;
+            margin-top: 8px;
+            color: #111827;
         }
         .filters {
             display: flex;
@@ -98,59 +136,88 @@
         .filter-link {
             display: inline-block;
             padding: 6px 10px;
-            border: 1px solid #d0d7de;
+            border: 1px solid #d1d5db;
             border-radius: 999px;
-            color: #2d3a4a;
+            color: #374151;
             text-decoration: none;
-            font-weight: bold;
-            background: white;
+            font-weight: 700;
+            background: #fff;
         }
         .filter-link.active {
-            background: #2d7ef7;
-            border-color: #2d7ef7;
+            background: #ecfeff;
+            border-color: #67e8f9;
+            color: #0f766e;
+        }
+        .btn {
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            cursor: pointer;
+            padding: 10px 14px;
+            transition: transform .15s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn-bulk-retry {
+            background: linear-gradient(135deg, #14532d 0%, #16a34a 100%);
             color: white;
+            box-shadow: 0 10px 20px rgba(22, 163, 74, 0.22);
         }
         .bulk-retry-form {
             margin: 0;
         }
-        .btn-bulk-retry {
-            border: none;
-            border-radius: 4px;
-            background-color: #1b5e20;
-            color: white;
-            font-weight: bold;
-            padding: 12px 16px;
-            cursor: pointer;
-        }
-        .btn-bulk-retry:hover {
-            background-color: #154a19;
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            background: #fff;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 760px;
         }
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eef2f7;
+            white-space: nowrap;
         }
         th {
-            background-color: #f8f9fa;
-            font-weight: bold;
+            background-color: #f8fafc;
+            font-weight: 700;
+            color: #334155;
         }
         tr:hover {
-            background-color: #f5f5f5;
+            background-color: #f8fafc;
         }
         .empty {
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--muted);
+            background: #fff;
+            border: 1px dashed #cbd5e1;
+            border-radius: var(--radius-md);
         }
         .actions {
             display: flex;
             gap: 12px;
             align-items: center;
         }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .status-pending { background: #fffbeb; color: #92400e; }
+        .status-processing { background: #eff6ff; color: #1d4ed8; }
+        .status-completed { background: #ecfdf5; color: #047857; }
+        .status-failed { background: #fef2f2; color: #b91c1c; }
         .delete-form {
             margin: 0;
         }
@@ -160,8 +227,8 @@
         .btn-retry {
             border: none;
             background: none;
-            color: #1b5e20;
-            font-weight: bold;
+            color: #0f766e;
+            font-weight: 700;
             cursor: pointer;
             padding: 0;
             font-size: inherit;
@@ -172,8 +239,8 @@
         .btn-delete {
             border: none;
             background: none;
-            color: #cc0000;
-            font-weight: bold;
+            color: var(--danger);
+            font-weight: 700;
             cursor: pointer;
             padding: 0;
             font-size: inherit;
@@ -182,18 +249,36 @@
             text-decoration: underline;
         }
         a {
-            color: #0066cc;
+            color: #0f766e;
             text-decoration: none;
-            font-weight: bold;
+            font-weight: 700;
         }
         a:hover {
             text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 18px;
+            }
+            .header-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .actions {
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>영수증 목록</h1>
+        <div class="header-row">
+            <div>
+                <h1>영수증 목록</h1>
+                <p class="lead">처리 상태를 한눈에 확인하고 실패 건을 빠르게 복구하세요.</p>
+            </div>
+            <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
+        </div>
 
         {% if messages %}
         <div class="messages">
@@ -204,11 +289,10 @@
         {% endif %}
         
         <div class="toolbar">
-            <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
             {% if retryable_failed_count %}
             <form method="post" action="{% url 'receipt-retry-failed-all' %}" class="bulk-retry-form" onsubmit="return confirm('재처리 가능한 실패건 {{ retryable_failed_count }}건을 재처리할까요? (최대 100건)');">
                 {% csrf_token %}
-                <button type="submit" class="btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
+                <button type="submit" class="btn btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
         </div>
@@ -258,6 +342,7 @@
         </div>
         
         {% if receipts %}
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
@@ -277,13 +362,13 @@
                     <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
                     <td>
                         {% if receipt.processing_status == 'completed' %}
-                            완료
+                            <span class="status-pill status-completed">완료</span>
                         {% elif receipt.processing_status == 'processing' %}
-                            처리중
+                            <span class="status-pill status-processing">처리중</span>
                         {% elif receipt.processing_status == 'failed' %}
-                            실패
+                            <span class="status-pill status-failed">실패</span>
                         {% else %}
-                            대기중
+                            <span class="status-pill status-pending">대기중</span>
                         {% endif %}
                     </td>
                     <td>{{ receipt.processing_attempts }}</td>
@@ -314,6 +399,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <div class="empty">
             <p>등록된 영수증이 없습니다.</p>
