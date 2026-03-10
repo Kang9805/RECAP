@@ -128,10 +128,10 @@
         
         <div class="toolbar">
             <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
-            {% if failed_count %}
-            <form method="post" action="{% url 'receipt-retry-failed-all' %}" class="bulk-retry-form" onsubmit="return confirm('실패한 영수증 {{ failed_count }}건을 재처리할까요?');">
+            {% if retryable_failed_count %}
+            <form method="post" action="{% url 'receipt-retry-failed-all' %}" class="bulk-retry-form" onsubmit="return confirm('재처리 가능한 실패건 {{ retryable_failed_count }}건을 재처리할까요? (최대 100건)');">
                 {% csrf_token %}
-                <button type="submit" class="btn-bulk-retry">실패건 일괄 재처리 ({{ failed_count }})</button>
+                <button type="submit" class="btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
         </div>

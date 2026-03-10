@@ -12,6 +12,18 @@ from .tasks import process_receipt_ocr_task
 
 MAX_UNIT_PRICE = Decimal('99999999.99')
 MAX_QUANTITY = 999
+MAX_BULK_RETRY_COUNT = 100
+
+
+def _get_retryable_failed_receipts_queryset():
+    retryable_error_codes = (
+        Receipt.ERROR_CODE_OCR_FAILED,
+        Receipt.ERROR_CODE_ENQUEUE_FAILED,
+    )
+    return Receipt.objects.filter(
+        processing_status=Receipt.STATUS_FAILED,
+        processing_error_code__in=retryable_error_codes,
+    ).exclude(image='')
 
 
 class ReceiptUploadView(CreateView):
@@ -50,6 +62,7 @@ class ReceiptListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['failed_count'] = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).count()
+        context['retryable_failed_count'] = _get_retryable_failed_receipts_queryset().count()
         failed_by_code = (
             Receipt.objects
             .filter(processing_status=Receipt.STATUS_FAILED)
@@ -136,7 +149,7 @@ def receipt_retry_view(request, pk):
 
 @require_POST
 def receipt_retry_failed_all_view(request):
-    failed_receipts = Receipt.objects.filter(processing_status=Receipt.STATUS_FAILED).exclude(image='')
+    failed_receipts = _get_retryable_failed_receipts_queryset().order_by('-uploaded_at')[:MAX_BULK_RETRY_COUNT]
 
     for receipt in failed_receipts:
         receipt.processing_status = Receipt.STATUS_PENDING
