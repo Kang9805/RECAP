@@ -6,11 +6,12 @@ from io import StringIO
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from .models import Receipt
-from .tasks import _is_non_retryable_ocr_error, process_receipt_ocr_task
+from .tasks import _is_non_retryable_ocr_error, process_receipt_ocr_task, mark_stuck_receipts_task
 from .views import _get_retryable_failed_receipts_queryset
 
 
@@ -44,6 +45,22 @@ class RetryableQuerysetTests(TestCase):
 
 		ids = set(_get_retryable_failed_receipts_queryset().values_list('id', flat=True))
 		self.assertEqual(ids, {retryable_1.id, retryable_2.id})
+
+	@override_settings(OCR_RETRYABLE_ERROR_CODES=[Receipt.ERROR_CODE_ENQUEUE_FAILED])
+	def test_get_retryable_failed_receipts_queryset_respects_settings(self):
+		enqueue_failed = Receipt.objects.create(
+			image=_fake_image_file('c1.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_ENQUEUE_FAILED,
+		)
+		Receipt.objects.create(
+			image=_fake_image_file('c2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+		)
+
+		ids = set(_get_retryable_failed_receipts_queryset().values_list('id', flat=True))
+		self.assertEqual(ids, {enqueue_failed.id})
 
 
 class RetryViewsTests(TestCase):
@@ -210,4 +227,29 @@ class StuckReceiptCommandTests(TestCase):
 		self.assertEqual(stuck.processing_error, 'Stuck processing timeout exceeded')
 		self.assertIsNone(stuck.processing_started_at)
 
+		self.assertEqual(fresh.processing_status, Receipt.STATUS_PROCESSING)
+
+
+class StuckReceiptBeatTaskTests(TestCase):
+	@override_settings(OCR_PROCESSING_STUCK_MINUTES=20)
+	def test_mark_stuck_receipts_task_updates_only_stuck_records(self):
+		now = timezone.now()
+		stuck = Receipt.objects.create(
+			image=_fake_image_file('b1.jpg'),
+			processing_status=Receipt.STATUS_PROCESSING,
+			processing_started_at=now - timedelta(minutes=45),
+		)
+		fresh = Receipt.objects.create(
+			image=_fake_image_file('b2.jpg'),
+			processing_status=Receipt.STATUS_PROCESSING,
+			processing_started_at=now - timedelta(minutes=3),
+		)
+
+		updated = mark_stuck_receipts_task()
+		self.assertEqual(updated, 1)
+
+		stuck.refresh_from_db()
+		fresh.refresh_from_db()
+		self.assertEqual(stuck.processing_status, Receipt.STATUS_FAILED)
+		self.assertIsNone(stuck.processing_started_at)
 		self.assertEqual(fresh.processing_status, Receipt.STATUS_PROCESSING)
