@@ -105,6 +105,52 @@ class ReceiptListFilterTests(TestCase):
 		self.assertIn('failed_count_by_code', response.context)
 
 
+class ReceiptStatusApiTests(TestCase):
+	def test_status_api_returns_expected_payload_shape(self):
+		receipt = Receipt.objects.create(
+			image=_fake_image_file('s1.jpg'),
+			processing_status=Receipt.STATUS_PROCESSING,
+			processing_error_code=Receipt.ERROR_CODE_NONE,
+			processing_attempts=2,
+			processing_duration_ms=None,
+		)
+
+		response = self.client.get(reverse('receipt-status-api', args=[receipt.pk]))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(
+			set(payload.keys()),
+			{'id', 'status', 'error_code', 'error', 'attempts', 'duration_ms', 'items_count'},
+		)
+		self.assertEqual(payload['id'], receipt.pk)
+		self.assertEqual(payload['status'], Receipt.STATUS_PROCESSING)
+		self.assertEqual(payload['error_code'], Receipt.ERROR_CODE_NONE)
+		self.assertEqual(payload['attempts'], 2)
+		self.assertIsNone(payload['duration_ms'])
+		self.assertEqual(payload['items_count'], 0)
+
+	def test_status_api_includes_failure_info(self):
+		receipt = Receipt.objects.create(
+			image=_fake_image_file('s2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+			processing_error='OCR failed after retries: timeout',
+			processing_attempts=4,
+			processing_duration_ms=12345,
+		)
+
+		response = self.client.get(reverse('receipt-status-api', args=[receipt.pk]))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload['status'], Receipt.STATUS_FAILED)
+		self.assertEqual(payload['error_code'], Receipt.ERROR_CODE_OCR_FAILED)
+		self.assertIn('OCR failed', payload['error'])
+		self.assertEqual(payload['attempts'], 4)
+		self.assertEqual(payload['duration_ms'], 12345)
+
+
 class OCRTaskErrorHandlingTests(TestCase):
 	def test_is_non_retryable_ocr_error_detects_missing_image_value_error(self):
 		exc = ValueError('Failed to load image: /tmp/missing.jpg')
