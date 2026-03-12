@@ -24,7 +24,7 @@ services:
              python manage.py collectstatic --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2"
     volumes:
-      - media_data:/app/media
+      - ./media:/app/media
       - staticfiles_data:/app/staticfiles
     depends_on:
       - db
@@ -48,7 +48,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - media_data:/app/media:ro
+      - ./media:/app/media:ro
       - staticfiles_data:/app/staticfiles:ro
     depends_on:
       - web
@@ -93,5 +93,4 @@ services:
 
 volumes:
   postgres_data:
-  media_data:
   staticfiles_data:
