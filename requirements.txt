@@ -1,6 +1,7 @@
 asgiref==3.11.1
 celery==5.4.0
 Django==5.2.11
+gunicorn==23.0.0
 psycopg2-binary==2.9.9
 packaging==26.0
 pillow==12.1.1
@@ -10,3 +11,4 @@ paddleocr==2.8.1
 paddlepaddle==2.6.2
 redis==5.0.8
 sqlparse==0.5.5
+whitenoise==6.9.0

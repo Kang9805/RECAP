@@ -47,5 +47,5 @@ urlpatterns = [
     path('receipts/<int:receipt_pk>/items/<int:item_pk>/delete/', receipt_item_delete_view, name='receipt-item-delete'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# media 파일은 DEBUG 여부와 관계없이 Django가 직접 제공
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
