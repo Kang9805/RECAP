@@ -26,4 +26,19 @@ jobs:
             echo "==> Rebuilding and restarting containers..."
             docker compose up -d --build
 
-            echo "==> Deploy complete"
+            # Ensure nginx picks up current web container DNS/IP after recreate.
+            docker compose restart nginx
+
+            echo "==> Waiting for health check..."
+            for i in {1..20}; do
+              if curl -fsS http://127.0.0.1/ >/dev/null; then
+                echo "Health check passed"
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo "Health check failed"
+            docker compose ps
+            docker compose logs --tail=80 web nginx
+            exit 1
