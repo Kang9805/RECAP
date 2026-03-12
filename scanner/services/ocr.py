@@ -1,6 +1,8 @@
 import cv2
 import pytesseract
 import re
+import numpy as np
+from pathlib import Path
 from django.conf import settings
 
 try:
@@ -10,6 +12,25 @@ except Exception:
 
 
 _paddle_ocr_engine = None
+
+
+def _load_image(image_path: str):
+    # Fallback to imdecode to support non-ASCII file paths reliably.
+    image = cv2.imread(image_path)
+    if image is not None:
+        return image
+
+    path = Path(image_path)
+    if not path.exists():
+        return None
+
+    try:
+        data = np.fromfile(str(path), dtype=np.uint8)
+        if data.size == 0:
+            return None
+        return cv2.imdecode(data, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
 
 
 def _deskew_image(gray_image):
@@ -41,7 +62,7 @@ def _deskew_image(gray_image):
 
 
 def preprocess_receipt_image(image_path: str):
-    image = cv2.imread(image_path)
+    image = _load_image(image_path)
     if image is None:
         raise ValueError(f"Failed to load image: {image_path}")
 
@@ -173,7 +194,7 @@ def _extract_text_with_paddle(image_path: str, preprocessed_candidates) -> str:
     if engine is None:
         return ''
 
-    source = cv2.imread(image_path)
+    source = _load_image(image_path)
     images = []
     if source is not None:
         images.append(source)
