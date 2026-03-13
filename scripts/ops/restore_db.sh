@@ -17,6 +17,11 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
+if ! docker compose ps --status running --services | grep -qx 'db'; then
+  echo "[restore] db service is not running, starting db"
+  docker compose up -d db
+fi
+
 echo "[restore] restoring ${BACKUP_FILE}"
 gunzip -c "${BACKUP_FILE}" | docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
 

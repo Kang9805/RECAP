@@ -16,9 +16,22 @@ cd "${PROJECT_ROOT}"
 
 DB_FILE="${DB_DIR}/recap_db_${TIMESTAMP}.sql.gz"
 MEDIA_FILE="${MEDIA_DIR}/recap_media_${TIMESTAMP}.tar.gz"
+TMP_DB_FILE="${DB_FILE}.tmp"
+
+if ! docker compose ps --status running --services | grep -qx 'db'; then
+  echo "[backup] db service is not running, starting db"
+  docker compose up -d db
+fi
 
 echo "[backup] dumping postgres to ${DB_FILE}"
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "${DB_FILE}"
+rm -f "${TMP_DB_FILE}"
+if docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "${TMP_DB_FILE}"; then
+  mv "${TMP_DB_FILE}" "${DB_FILE}"
+else
+  rm -f "${TMP_DB_FILE}"
+  echo "[backup] postgres dump failed"
+  exit 1
+fi
 
 echo "[backup] archiving media to ${MEDIA_FILE}"
 if [ -d "${PROJECT_ROOT}/media" ]; then
