@@ -149,3 +149,42 @@ MIT License
 - `OCR_PROCESSING_STUCK_MINUTES`: processing 상태 최대 허용 시간(분)
 - `CELERY_BEAT_STUCK_CHECK_MINUTES`: stuck 정리 task 실행 주기(분)
 - `OCR_RETRYABLE_ERROR_CODES`: 일괄 재처리 허용 실패 코드 목록 (쉼표 구분)
+
+## 운영 백업/복구
+
+백업 스크립트는 `scripts/ops/backup.sh` 입니다.
+
+```bash
+# 프로젝트 루트에서 실행
+./scripts/ops/backup.sh
+```
+
+생성 결과:
+- DB 백업: `backups/db/recap_db_YYYYMMDD_HHMMSS.sql.gz`
+- 미디어 백업: `backups/media/recap_media_YYYYMMDD_HHMMSS.tar.gz`
+
+옵션 환경변수:
+- `RETENTION_DAYS` (기본 7): 보관일 지난 백업 자동 삭제
+- `BACKUP_ROOT` (기본 `./backups`): 백업 저장 경로 변경
+
+```bash
+RETENTION_DAYS=14 ./scripts/ops/backup.sh
+```
+
+DB 복구 스크립트는 `scripts/ops/restore_db.sh` 입니다.
+
+```bash
+./scripts/ops/restore_db.sh backups/db/recap_db_YYYYMMDD_HHMMSS.sql.gz
+```
+
+### crontab 등록 예시 (VM)
+
+매일 새벽 3시에 백업:
+
+```bash
+crontab -e
+```
+
+```cron
+0 3 * * * cd /home/groupip98/RECAP && ./scripts/ops/backup.sh >> /home/groupip98/RECAP/backups/backup.log 2>&1
+```
