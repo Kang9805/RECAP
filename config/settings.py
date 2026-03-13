@@ -42,6 +42,11 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-9_ijaq*snsup9b^)&@92*1c)6(
 DEBUG = _env_bool('DEBUG', True)
 
 ALLOWED_HOSTS = _env_list('ALLOWED_HOSTS')
+CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS')
+
+# Respect HTTPS information forwarded by Nginx.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 
 # Application definition
@@ -150,6 +155,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+if not DEBUG:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
