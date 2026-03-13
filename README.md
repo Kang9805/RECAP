@@ -1,22 +1,26 @@
 # RECAP - Receipt OCR
 
-영수증 이미지에서 텍스트를 자동으로 추출하고 항목을 분류하는 Django 기반 웹 애플리케이션입니다.
+영수증 이미지를 업로드하면 OCR로 텍스트를 추출하고, 항목을 정리해 저장/조회할 수 있는 Django 기반 웹 애플리케이션입니다.
 
-## 기능
+## 주요 기능
 
-- **영수증 업로드**: 이미지 형식의 영수증 파일 업로드
-- **자동 OCR**: Tesseract를 사용한 텍스트 추출
-- **항목 관리**: 영수증 항목(상품명, 수량, 가격) 저장 및 조회
-- **관리자 인터페이스**: Django Admin을 통한 데이터 관리
+- **영수증 업로드**: 이미지 파일 업로드 및 저장
+- **OCR 처리**: Tesseract + PaddleOCR 기반 텍스트 추출
+- **항목 파싱**: 추출된 텍스트를 품목/수량/단가로 정리
+- **재처리/실패 관리**: OCR 실패 건 재시도, stuck 작업 정리
+- **목록 관리**: 상태별 필터링, 선택 삭제, 상세 조회
+- **운영 자동화**: GitHub Actions 자동배포, 백업 스크립트, HTTPS 인증서 갱신
 
 ## 기술 스택
 
-- **Backend**: Django 6.0.2
-- **Database**: SQLite
-- **OCR**: Tesseract (pytesseract)
-- **Image Processing**: Pillow
+- **Backend**: Django 5.2.11
+- **Database**: PostgreSQL (운영), SQLite (로컬 fallback)
+- **Queue / Scheduler**: Celery, Celery Beat, Redis
+- **OCR**: pytesseract, PaddleOCR, PaddlePaddle
+- **Infra**: Docker Compose, Nginx, Gunicorn
+- **Deploy**: GCP Compute Engine + GitHub Actions
 
-## 설치
+## 로컬 개발 환경
 
 ### 요구사항
 
@@ -61,7 +65,7 @@ sudo apt-get install tesseract-ocr
 # https://github.com/UB-Mannheim/tesseract/wiki 참고
 ```
 
-## 실행
+## 로컬 실행
 
 ### 1. 마이그레이션 적용
 
@@ -91,17 +95,35 @@ celery -A config worker --loglevel=info
 celery -A config beat --loglevel=info
 ```
 
-Docker Compose를 사용한다면 아래처럼 `web`, `worker`, `beat`를 함께 실행할 수 있습니다.
+Docker Compose를 사용한다면 아래처럼 `web`, `worker`, `beat`, `redis`, `db`를 함께 실행할 수 있습니다.
 
 ```bash
 docker compose up --build
 ```
 
-서버는 `http://127.0.0.1:8000/` 에서 실행됩니다.
+로컬 개발 서버는 `http://127.0.0.1:8000/` 에서 실행됩니다.
 
 ### 4. Admin 접근
 
 관리자 페이지: `http://127.0.0.1:8000/admin/`
+
+## 운영 배포 구조
+
+현재 운영 환경은 아래 구조를 기준으로 동작합니다.
+
+```text
+Client
+	-> Nginx (80 / 443)
+	-> Gunicorn (Django)
+	-> Celery Worker / Beat
+	-> Redis / PostgreSQL
+```
+
+운영 배포 특징:
+- GCP Compute Engine VM 1대에서 Docker Compose로 서비스 실행
+- GitHub Actions에서 `main` push 시 자동배포
+- Nginx가 정적 파일 / 미디어 파일 직접 서빙
+- HTTPS는 Let's Encrypt + Certbot으로 관리
 
 ## 프로젝트 구조
 
@@ -140,15 +162,43 @@ recap/
 - `quantity`: 수량
 - `unit_price`: 단가
 
-## 라이선스
-
-MIT License
-
 ## 운영 설정 환경변수
 
 - `OCR_PROCESSING_STUCK_MINUTES`: processing 상태 최대 허용 시간(분)
 - `CELERY_BEAT_STUCK_CHECK_MINUTES`: stuck 정리 task 실행 주기(분)
 - `OCR_RETRYABLE_ERROR_CODES`: 일괄 재처리 허용 실패 코드 목록 (쉼표 구분)
+
+자주 사용하는 운영 환경변수 예시:
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=34.64.234.157,recap.o-r.kr,www.recap.o-r.kr,127.0.0.1,localhost
+POSTGRES_DB=recap
+POSTGRES_USER=recap_user
+POSTGRES_PASSWORD=your-db-password
+DATABASE_HOST=db
+DATABASE_PORT=5432
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/1
+OCR_MODE=fast
+```
+
+## 자동배포
+
+GitHub Actions 워크플로우는 아래 순서로 동작합니다.
+
+1. `main` 브랜치 push
+2. Django 테스트 실행
+3. 테스트 통과 시 VM SSH 접속
+4. `git pull origin main`
+5. `docker compose up -d --build`
+6. Nginx 재시작 및 health check
+
+필요한 GitHub Secrets:
+- `GCP_VM_HOST`
+- `GCP_VM_USER`
+- `GCP_VM_SSH_KEY`
+- `GCP_VM_REPO_PATH`
 
 ## 운영 백업/복구
 
@@ -188,3 +238,20 @@ crontab -e
 ```cron
 0 3 * * * cd /home/groupip98/RECAP && ./scripts/ops/backup.sh >> /home/groupip98/RECAP/backups/backup.log 2>&1
 ```
+
+## HTTPS 운영 메모
+
+- 도메인: `recap.o-r.kr`, `www.recap.o-r.kr`
+- Nginx가 80 -> 443 리다이렉트 수행
+- 인증서는 `certbot/conf` 아래에 저장
+- 자동 갱신은 cron에서 `certbot renew` 실행 후 Nginx 재시작
+
+예시 cron:
+
+```cron
+0 4 * * * cd /home/groupip98/RECAP && (docker run --rm -v /home/groupip98/RECAP/certbot/www:/var/www/certbot -v /home/groupip98/RECAP/certbot/conf:/etc/letsencrypt certbot/certbot renew --webroot -w /var/www/certbot && docker compose restart nginx) >> /home/groupip98/RECAP/backups/certbot-renew.log 2>&1
+```
+
+## 라이선스
+
+MIT License
