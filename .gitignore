@@ -16,6 +16,10 @@ db.sqlite3-journal
 media/
 staticfiles/
 backups/
+certbot/conf/*
+certbot/www/*
+!certbot/conf/.gitkeep
+!certbot/www/.gitkeep
 
 # Environment variables
 .env
