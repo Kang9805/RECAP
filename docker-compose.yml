@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:15
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -14,11 +15,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
 
   web:
     build: .
+    restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
@@ -44,6 +47,7 @@ services:
 
   nginx:
     image: nginx:alpine
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -64,6 +68,7 @@ services:
 
   worker:
     build: .
+    restart: unless-stopped
     command: celery -A config worker --loglevel=info
     volumes:
       - ./media:/app/media:ro
@@ -85,6 +90,7 @@ services:
 
   beat:
     build: .
+    restart: unless-stopped
     command: celery -A config beat --loglevel=info
     depends_on:
       - db
