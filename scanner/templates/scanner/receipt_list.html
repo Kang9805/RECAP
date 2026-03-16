@@ -6,70 +6,150 @@
     <title>영수증 목록</title>
     <style>
         :root {
-            --ink: #1f2937;
-            --muted: #6b7280;
+            --ink: #1d2736;
+            --muted: #667085;
             --panel: #ffffff;
-            --line: #e5e7eb;
+            --panel-soft: rgba(255, 255, 255, 0.76);
+            --line: #d9e2ec;
+            --line-strong: #c3d0dd;
             --brand: #0f766e;
             --brand-dark: #115e59;
-            --accent: #f59e0b;
-            --danger: #b91c1c;
-            --shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
-            --radius-xl: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
+            --brand-soft: #d7f7f0;
+            --accent: #d97706;
+            --accent-soft: #fff1d6;
+            --danger: #b42318;
+            --danger-soft: #ffe2dd;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            --shadow-soft: 0 14px 28px rgba(15, 23, 42, 0.08);
+            --radius-xl: 28px;
+            --radius-lg: 20px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            padding: 28px 16px 40px;
+            padding: 30px 18px 48px;
             color: var(--ink);
             font-family: "Pretendard", "SUIT", "Noto Sans KR", sans-serif;
             background:
-                radial-gradient(circle at 14% 18%, #d1fae5 0%, rgba(209, 250, 229, 0) 45%),
-                radial-gradient(circle at 86% 2%, #fef3c7 0%, rgba(254, 243, 199, 0) 40%),
-                linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+                radial-gradient(circle at 12% 14%, rgba(143, 240, 224, 0.65) 0%, rgba(143, 240, 224, 0) 34%),
+                radial-gradient(circle at 88% 6%, rgba(255, 229, 180, 0.75) 0%, rgba(255, 229, 180, 0) 32%),
+                linear-gradient(180deg, #f7fbfa 0%, #eef4f7 52%, #f7f9fb 100%);
         }
         .container {
             max-width: 1120px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.86);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: var(--panel-soft);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
             padding: 28px;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow);
         }
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+        .hero-main,
+        .hero-side {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.92) 100%);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+        }
+        .hero-main {
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-main::after {
+            content: "";
+            position: absolute;
+            inset: auto -42px -42px auto;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(15, 118, 110, 0.16) 0%, rgba(15, 118, 110, 0) 70%);
+            pointer-events: none;
+        }
+        .hero-side {
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+            align-content: start;
+        }
         h1 {
             margin: 0;
-            font-size: clamp(26px, 3.2vw, 34px);
+            font-size: clamp(28px, 3.5vw, 40px);
             letter-spacing: -0.03em;
+            line-height: 1.04;
         }
         .lead {
-            margin: 8px 0 0;
+            margin: 10px 0 0;
             color: var(--muted);
+            max-width: 640px;
+            line-height: 1.6;
+        }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: var(--brand-dark);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
         .header-row {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             gap: 16px;
-            margin-bottom: 22px;
+            margin-bottom: 20px;
+        }
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
         }
         .btn-upload {
             display: inline-block;
-            padding: 11px 16px;
+            padding: 12px 18px;
             background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
             color: #fff;
             text-decoration: none;
-            border-radius: var(--radius-sm);
+            border-radius: 999px;
             font-weight: 700;
-            box-shadow: 0 10px 20px rgba(20, 184, 166, 0.24);
+            box-shadow: 0 14px 24px rgba(20, 184, 166, 0.24);
             transition: transform .15s ease, box-shadow .15s ease;
         }
         .btn-upload:hover {
             transform: translateY(-1px);
             box-shadow: 0 14px 24px rgba(20, 184, 166, 0.3);
+        }
+        .quick-note {
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(160deg, #f8fffd 0%, #eefbf7 100%);
+            border: 1px solid #caefe7;
+        }
+        .quick-note strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .quick-note p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.55;
         }
         .messages {
             margin-bottom: 14px;
@@ -101,59 +181,80 @@
             flex-wrap: wrap;
             gap: 10px 12px;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
+            padding: 14px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(217, 226, 236, 0.92);
         }
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
         }
         .dashboard.secondary {
             margin-top: 0;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
         .stat-card {
-            background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid var(--line);
+            background: linear-gradient(180deg, #ffffff 0%, #f9fbfc 100%);
+            border: 1px solid rgba(217, 226, 236, 0.92);
             border-radius: var(--radius-md);
-            padding: 12px;
+            padding: 14px;
             text-align: left;
             color: var(--muted);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, rgba(15, 118, 110, 0.86), rgba(20, 184, 166, 0.42));
         }
         .stat-card strong {
             display: block;
-            font-size: 22px;
-            margin-top: 8px;
+            font-size: 24px;
+            margin-top: 10px;
             color: #111827;
+        }
+        .stat-caption {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 800;
+            color: #7b8794;
         }
         .filters {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 18px;
+            gap: 10px;
+            margin-bottom: 20px;
         }
         .filter-link {
             display: inline-block;
-            padding: 6px 10px;
-            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            border: 1px solid #d4dbe3;
             border-radius: 999px;
-            color: #374151;
+            color: #3b4754;
             text-decoration: none;
             font-weight: 700;
-            background: #fff;
+            background: rgba(255, 255, 255, 0.88);
         }
         .filter-link.active {
-            background: #ecfeff;
-            border-color: #67e8f9;
+            background: #e9fbf8;
+            border-color: #72dbc9;
             color: #0f766e;
         }
         .btn {
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: 999px;
             font-weight: 700;
             cursor: pointer;
-            padding: 10px 14px;
+            padding: 10px 16px;
             transition: transform .15s ease;
         }
         .btn:hover {
@@ -169,9 +270,10 @@
         }
         .table-wrap {
             overflow-x: auto;
-            border: 1px solid var(--line);
-            border-radius: var(--radius-md);
-            background: #fff;
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: var(--shadow-soft);
         }
         table {
             width: 100%;
@@ -179,30 +281,32 @@
             min-width: 760px;
         }
         th, td {
-            padding: 12px;
+            padding: 14px 12px;
             text-align: left;
             border-bottom: 1px solid #eef2f7;
             white-space: nowrap;
         }
         th {
-            background-color: #f8fafc;
+            background: linear-gradient(180deg, #f8fbfc 0%, #f1f5f9 100%);
             font-weight: 700;
-            color: #334155;
+            color: #475467;
+            font-size: 13px;
+            letter-spacing: 0.02em;
         }
         tr:hover {
-            background-color: #f8fafc;
+            background-color: #f7fbfc;
         }
         .empty {
             text-align: center;
             padding: 40px;
             color: var(--muted);
-            background: #fff;
-            border: 1px dashed #cbd5e1;
-            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px dashed #c7d2de;
+            border-radius: var(--radius-lg);
         }
         .actions {
             display: flex;
-            gap: 12px;
+            gap: 14px;
             align-items: center;
         }
         .bulk-select-form {
@@ -225,15 +329,43 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 10px;
+            padding: 6px 11px;
             border-radius: 999px;
             font-size: 13px;
             font-weight: 700;
+            border: 1px solid transparent;
         }
-        .status-pending { background: #fffbeb; color: #92400e; }
-        .status-processing { background: #eff6ff; color: #1d4ed8; }
-        .status-completed { background: #ecfdf5; color: #047857; }
-        .status-failed { background: #fef2f2; color: #b91c1c; }
+        .status-pending { background: #fff7e9; color: #9a5800; border-color: #f6d8a8; }
+        .status-processing { background: #eaf3ff; color: #1d4ed8; border-color: #bfd4ff; }
+        .status-completed { background: #e8fbf4; color: #047857; border-color: #b7ebd6; }
+        .status-failed { background: #feeeec; color: #b42318; border-color: #f5c3bc; }
+        .metric-inline {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .metric-inline strong {
+            color: #101828;
+            font-size: 15px;
+        }
+        .receipt-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .receipt-meta span {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #dbe3ea;
+            color: #475467;
+            font-size: 13px;
+            font-weight: 700;
+        }
         .delete-form {
             margin: 0;
         }
@@ -276,6 +408,9 @@
             .container {
                 padding: 18px;
             }
+            .hero {
+                grid-template-columns: 1fr;
+            }
             .header-row {
                 flex-direction: column;
                 align-items: flex-start;
@@ -288,12 +423,34 @@
 </head>
 <body>
     <div class="container">
-        <div class="header-row">
-            <div>
-                <h1>영수증 목록</h1>
-                <p class="lead">처리 상태를 한눈에 확인하고 실패 건을 빠르게 복구하세요.</p>
-            </div>
-            <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
+        <div class="hero">
+            <section class="hero-main">
+                <span class="eyebrow">OCR Operations Center</span>
+                <div class="header-row">
+                    <div>
+                        <h1>영수증 흐름을 한 화면에서 관리하세요.</h1>
+                        <p class="lead">업로드, OCR 처리, 실패 복구, 정리 작업을 같은 컨텍스트에서 빠르게 처리할 수 있도록 구성한 운영형 대시보드입니다.</p>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <a href="{% url 'receipt-upload' %}" class="btn-upload">+ 새 영수증 추가</a>
+                </div>
+                <div class="receipt-meta">
+                    <span>실패건 추적</span>
+                    <span>일괄 작업 지원</span>
+                    <span>상태별 KPI 확인</span>
+                </div>
+            </section>
+            <aside class="hero-side">
+                <div class="quick-note">
+                    <strong>오늘의 운영 포인트</strong>
+                    <p>실패한 건은 원인 코드별로 바로 묶어서 볼 수 있고, 재처리가 필요한 항목은 액션바에서 한 번에 처리할 수 있습니다.</p>
+                </div>
+                <div class="quick-note">
+                    <strong>권장 작업 순서</strong>
+                    <p>1) 실패 필터 확인  2) 재처리 가능 건 정리  3) 장시간 처리중 레코드 점검  4) 불필요한 업로드 정리</p>
+                </div>
+            </aside>
         </div>
 
         {% if messages %}
@@ -318,32 +475,32 @@
         </div>
 
         <div class="dashboard">
-            <div class="stat-card">전체<strong>{{ status_counts.all }}</strong></div>
-            <div class="stat-card">대기중<strong>{{ status_counts.pending }}</strong></div>
-            <div class="stat-card">처리중<strong>{{ status_counts.processing }}</strong></div>
-            <div class="stat-card">완료<strong>{{ status_counts.completed }}</strong></div>
-            <div class="stat-card">실패<strong>{{ status_counts.failed }}</strong></div>
+            <div class="stat-card"><span class="stat-caption">전체</span><strong>{{ status_counts.all }}</strong></div>
+            <div class="stat-card"><span class="stat-caption">대기중</span><strong>{{ status_counts.pending }}</strong></div>
+            <div class="stat-card"><span class="stat-caption">처리중</span><strong>{{ status_counts.processing }}</strong></div>
+            <div class="stat-card"><span class="stat-caption">완료</span><strong>{{ status_counts.completed }}</strong></div>
+            <div class="stat-card"><span class="stat-caption">실패</span><strong>{{ status_counts.failed }}</strong></div>
         </div>
 
         <div class="dashboard secondary">
             <div class="stat-card">
-                성공률
+                <span class="stat-caption">성공률</span>
                 <strong>{{ kpi.success_rate }}%</strong>
             </div>
             <div class="stat-card">
-                평균 처리시간
+                <span class="stat-caption">평균 처리시간</span>
                 <strong>{% if kpi.avg_duration_ms %}{{ kpi.avg_duration_ms }} ms{% else %}-{% endif %}</strong>
             </div>
             <div class="stat-card">
-                24h 업로드
+                <span class="stat-caption">24h 업로드</span>
                 <strong>{{ kpi.recent.uploaded }}</strong>
             </div>
             <div class="stat-card">
-                24h 완료
+                <span class="stat-caption">24h 완료</span>
                 <strong>{{ kpi.recent.completed }}</strong>
             </div>
             <div class="stat-card">
-                24h 실패
+                <span class="stat-caption">24h 실패</span>
                 <strong>{{ kpi.recent.failed }}</strong>
             </div>
         </div>

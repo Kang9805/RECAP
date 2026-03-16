@@ -6,14 +6,17 @@
     <title>영수증 업로드</title>
     <style>
         :root {
-            --ink: #1f2937;
-            --muted: #6b7280;
-            --line: #e5e7eb;
+            --ink: #1d2736;
+            --muted: #667085;
+            --line: #d9e2ec;
             --brand: #0f766e;
-            --shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
-            --radius-xl: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
+            --brand-soft: #d7f7f0;
+            --accent-soft: #fff1d6;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            --radius-xl: 28px;
+            --radius-lg: 20px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
         }
         * { box-sizing: border-box; }
         body {
@@ -22,55 +25,100 @@
             color: var(--ink);
             font-family: "Pretendard", "SUIT", "Noto Sans KR", sans-serif;
             background:
-                radial-gradient(circle at 14% 18%, #d1fae5 0%, rgba(209, 250, 229, 0) 45%),
-                radial-gradient(circle at 86% 2%, #fef3c7 0%, rgba(254, 243, 199, 0) 40%),
-                linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+                radial-gradient(circle at 14% 18%, rgba(209, 250, 229, 0.74) 0%, rgba(209, 250, 229, 0) 45%),
+                radial-gradient(circle at 86% 2%, rgba(254, 243, 199, 0.84) 0%, rgba(254, 243, 199, 0) 40%),
+                linear-gradient(160deg, #f7fbfa 0%, #eef4f7 52%, #f7f9fb 100%);
         }
         .container {
             max-width: 640px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(14px);
             border: 1px solid rgba(255, 255, 255, 0.85);
             padding: 28px;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow);
         }
+        .hero {
+            margin-bottom: 22px;
+            padding: 22px;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.94) 100%);
+        }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
         h1 {
             margin: 0;
             font-size: clamp(26px, 3.2vw, 34px);
             letter-spacing: -0.03em;
-            text-align: center;
         }
         .lead {
-            margin: 8px 0 22px;
-            text-align: center;
+            margin: 10px 0 0;
             color: var(--muted);
+            line-height: 1.6;
+        }
+        .tips {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .tip {
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            color: #475467;
+            font-size: 14px;
+        }
+        .upload-card {
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(217, 226, 236, 0.92);
         }
         .form-group {
             margin-bottom: 20px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 700;
             color: #374151;
         }
         input[type="file"] {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: var(--radius-sm);
-            background: #fff;
+            padding: 18px;
+            border: 1.5px dashed #9fcfc5;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fbfffe 0%, #f1fbf8 100%);
             cursor: pointer;
+        }
+        .field-note {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
         }
         button {
             width: 100%;
-            padding: 12px;
+            padding: 13px;
             background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
             color: white;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: 999px;
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
@@ -103,16 +151,26 @@
 </head>
 <body>
     <div class="container">
-        <h1>영수증 업로드</h1>
-        <p class="lead">이미지를 업로드하면 OCR 처리가 백그라운드에서 자동으로 시작됩니다.</p>
+        <div class="hero">
+            <span class="eyebrow">Receipt Intake</span>
+            <h1>새 영수증을 업로드하세요.</h1>
+            <p class="lead">이미지를 등록하면 백그라운드에서 OCR이 자동 시작되고, 목록 화면에서 진행 상태와 실패 건을 바로 확인할 수 있습니다.</p>
+            <div class="tips">
+                <div class="tip">사진이 흐리거나 그림자가 강하면 인식률이 떨어질 수 있습니다.</div>
+                <div class="tip">실패한 건도 목록에서 재처리할 수 있으니 일단 업로드 후 상태를 점검하는 흐름이 가장 빠릅니다.</div>
+            </div>
+        </div>
+        <div class="upload-card">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
-                <label for="id_image">이미지 선택:</label>
+                <label for="id_image">이미지 선택</label>
                 {{ form.image }}
+                <p class="field-note">JPG, PNG 같은 일반 이미지 형식을 권장합니다. 가능하면 영수증 전체가 잘 보이도록 정면에서 촬영한 이미지를 사용하세요.</p>
             </div>
-            <button type="submit">업로드</button>
+            <button type="submit">OCR 작업 시작하기</button>
         </form>
+        </div>
         <div class="links">
             <a href="{% url 'receipt-list' %}">목록으로 돌아가기</a>
         </div>

@@ -7,17 +7,20 @@
     <title>영수증 상세</title>
     <style>
         :root {
-            --ink: #1f2937;
-            --muted: #6b7280;
+            --ink: #1d2736;
+            --muted: #667085;
             --panel: #ffffff;
-            --line: #e5e7eb;
+            --panel-soft: rgba(255, 255, 255, 0.86);
+            --line: #d9e2ec;
             --brand: #0f766e;
             --brand-dark: #115e59;
             --danger: #b91c1c;
-            --shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
-            --radius-xl: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            --shadow-soft: 0 14px 28px rgba(15, 23, 42, 0.08);
+            --radius-xl: 28px;
+            --radius-lg: 20px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
         }
         * { box-sizing: border-box; }
         body {
@@ -26,44 +29,126 @@
             color: var(--ink);
             font-family: "Pretendard", "SUIT", "Noto Sans KR", sans-serif;
             background:
-                radial-gradient(circle at 14% 18%, #d1fae5 0%, rgba(209, 250, 229, 0) 45%),
-                radial-gradient(circle at 86% 2%, #fef3c7 0%, rgba(254, 243, 199, 0) 40%),
-                linear-gradient(160deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+                radial-gradient(circle at 14% 18%, rgba(209, 250, 229, 0.72) 0%, rgba(209, 250, 229, 0) 45%),
+                radial-gradient(circle at 86% 2%, rgba(254, 243, 199, 0.8) 0%, rgba(254, 243, 199, 0) 40%),
+                linear-gradient(160deg, #f7fbfa 0%, #eef4f7 52%, #f7f9fb 100%);
         }
         .container {
             max-width: 1080px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(8px);
+            background: var(--panel-soft);
+            backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.8);
             padding: 28px;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow);
         }
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.8fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .hero-main,
+        .hero-aside,
+        .surface,
+        .surface-soft {
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            box-shadow: var(--shadow-soft);
+        }
+        .hero-main,
+        .hero-aside {
+            background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(248,250,252,.94) 100%);
+        }
+        .hero-main {
+            padding: 24px;
+        }
+        .hero-aside {
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
         h1 {
             margin: 0;
-            font-size: clamp(26px, 3.2vw, 34px);
+            font-size: clamp(28px, 3.5vw, 40px);
             letter-spacing: -0.03em;
         }
         h2 {
             color: #111827;
-            margin-top: 30px;
+            margin: 0 0 14px;
             border-bottom: 1px solid var(--line);
             padding-bottom: 10px;
         }
         .lead {
             margin: 8px 0 0;
             color: var(--muted);
+            line-height: 1.6;
+        }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: #d7f7f0;
+            color: var(--brand-dark);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .04em;
+            text-transform: uppercase;
         }
         .header-row {
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
-        .receipt-info {
-            background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid var(--line);
-            padding: 15px;
+        .receipt-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .metric-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid rgba(217, 226, 236, 0.92);
             border-radius: var(--radius-md);
-            margin-bottom: 20px;
+            padding: 14px;
+        }
+        .metric-card span {
+            display: block;
+            color: #7b8794;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-weight: 800;
+        }
+        .metric-card strong {
+            display: block;
+            margin-top: 10px;
+            font-size: 22px;
+            color: #101828;
+        }
+        .hero-aside strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .hero-aside p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+        .surface {
+            background: rgba(255,255,255,.92);
+            padding: 20px;
+            margin-bottom: 18px;
+        }
+        .surface-soft {
+            background: rgba(248, 250, 252, 0.92);
+            padding: 18px;
+            margin-bottom: 18px;
         }
         .receipt-info p {
             margin: 7px 0;
@@ -138,14 +223,14 @@
         }
         .image-preview {
             text-align: center;
-            margin: 20px 0;
+            margin: 0;
         }
         .image-preview img {
             max-width: 400px;
             max-height: 400px;
             border: 1px solid var(--line);
-            border-radius: var(--radius-md);
-            box-shadow: 0 10px 30px rgba(2, 132, 199, 0.1);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px rgba(2, 132, 199, 0.12);
         }
         .extracted-text {
             background-color: #f8fafc;
@@ -176,7 +261,7 @@
         .table-wrap {
             overflow-x: auto;
             border: 1px solid var(--line);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             background: #fff;
         }
         table {
@@ -260,6 +345,12 @@
             .container {
                 padding: 18px;
             }
+            .hero {
+                grid-template-columns: 1fr;
+            }
+            .receipt-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
             .add-form-grid {
                 grid-template-columns: 1fr;
             }
@@ -268,9 +359,30 @@
 </head>
 <body>
     <div class="container">
-        <div class="header-row">
-            <h1>영수증 상세</h1>
-            <p class="lead">OCR 결과와 파싱 항목을 확인하고 필요한 부분을 수정하세요.</p>
+        <div class="hero">
+            <section class="hero-main">
+                <span class="eyebrow">Receipt Control Panel</span>
+                <div class="header-row">
+                    <h1>영수증 상세</h1>
+                    <p class="lead">OCR 결과, 실패 원인, 파싱 항목을 한 화면에서 확인하고 필요한 수정을 바로 반영할 수 있습니다.</p>
+                </div>
+                <div class="receipt-grid">
+                    <div class="metric-card"><span>영수증 ID</span><strong>#{{ receipt.id }}</strong></div>
+                    <div class="metric-card"><span>처리 시도</span><strong>{{ receipt.processing_attempts }}</strong></div>
+                    <div class="metric-card"><span>처리 시간</span><strong>{% if receipt.processing_duration_ms %}{{ receipt.processing_duration_ms }} ms{% else %}-{% endif %}</strong></div>
+                    <div class="metric-card"><span>등록 항목</span><strong>{{ receipt.items.count }}</strong></div>
+                </div>
+            </section>
+            <aside class="hero-aside">
+                <div>
+                    <strong>업로드 시각</strong>
+                    <p>{{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</p>
+                </div>
+                <div>
+                    <strong>운영 메모</strong>
+                    <p>실패 상태에서는 원인 메시지를 확인한 뒤 재처리를 바로 실행할 수 있고, 완료 후에는 항목 단위 수정도 가능합니다.</p>
+                </div>
+            </aside>
         </div>
 
         {% if messages %}
@@ -281,7 +393,7 @@
         </div>
         {% endif %}
         
-        <div class="receipt-info">
+        <div class="surface receipt-info">
             <p><strong>ID:</strong> #{{ receipt.id }}</p>
             <p><strong>업로드 날짜:</strong> {{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</p>
             <p><strong>처리 시도 횟수:</strong> {{ receipt.processing_attempts }}</p>
@@ -324,11 +436,12 @@
         </div>
         
         {% if receipt.image %}
-        <div class="image-preview">
+        <div class="surface image-preview">
             <img src="{{ receipt.image.url }}" alt="Receipt Image">
         </div>
         {% endif %}
         
+        <div class="surface">
         <h2>추출된 텍스트</h2>
         <div class="extracted-text">
             {% if receipt.processing_status != 'completed' %}
@@ -339,7 +452,9 @@
                 <span style="color: #999;">추출된 텍스트가 없습니다.</span>
             {% endif %}
         </div>
+        </div>
 
+        <div class="surface-soft">
         <h2>미분류 라인</h2>
         {% if receipt.processing_status != 'completed' %}
         <div class="empty">
@@ -358,7 +473,9 @@
             <p>미분류 라인이 없습니다.</p>
         </div>
         {% endif %}
+        </div>
         
+        <div class="surface">
         <h2>항목 목록</h2>
         {% if receipt.processing_status != 'completed' %}
         <div class="empty">
@@ -435,6 +552,7 @@
             </form>
         </div>
         {% endif %}
+        </div>
         
         <div class="links">
             <a href="{% url 'receipt-list' %}">목록으로 돌아가기</a>
