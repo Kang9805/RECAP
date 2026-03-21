@@ -286,6 +286,10 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
+            align-items: center;
+        }
+        .filters .bulk-select-form {
+            margin: 0 0 0 auto;
         }
         .filter-link {
             display: inline-block;
@@ -519,6 +523,9 @@
             .actions {
                 gap: 10px;
             }
+            .filters .bulk-select-form {
+                margin-left: 0;
+            }
         }
     </style>
 </head>
@@ -569,10 +576,6 @@
                 <button type="submit" class="btn btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
-            <form method="post" action="{% url 'receipt-delete-selected' %}" class="bulk-select-form" id="bulk-select-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-bulk-retry" id="bulk-delete-btn" disabled>선택 삭제</button>
-            </form>
         </div>
 
         <form method="get" class="search-panel">
@@ -653,6 +656,10 @@
                 {{ row.label }} ({{ row.count }})
             </a>
             {% endfor %}
+            <form method="post" action="{% url 'receipt-delete-selected' %}" class="bulk-select-form" id="bulk-select-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-bulk-retry" id="bulk-delete-btn" disabled>선택 삭제</button>
+            </form>
         </div>
         
         {% if receipts %}
