@@ -198,7 +198,7 @@
         }
         .search-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr auto;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
             gap: 10px;
             align-items: end;
         }
@@ -213,13 +213,15 @@
             text-transform: uppercase;
             color: #667085;
         }
-        .search-field input {
+        .search-field input,
+        .search-field select {
             width: 100%;
             border: 1px solid #d1dae4;
             border-radius: 10px;
             padding: 10px 12px;
             font-size: 14px;
             background: #fff;
+            color: #1d2736;
         }
         .search-actions {
             display: flex;
@@ -455,6 +457,51 @@
         a:hover {
             text-decoration: underline;
         }
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid #d4dbe3;
+            border-radius: 999px;
+            color: #3b4754;
+            text-decoration: none;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.88);
+            font-size: 14px;
+        }
+        .page-link:hover {
+            background: #eef3f7;
+            text-decoration: none;
+        }
+        .page-link.active {
+            background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(20, 184, 166, 0.25);
+        }
+        .page-info {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+        @keyframes poll-pulse {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(29, 78, 216, 0.04); }
+        }
+        tr.row-polling {
+            animation: poll-pulse 3s ease-in-out infinite;
+        }
         @media (max-width: 768px) {
             .container {
                 padding: 18px;
@@ -542,6 +589,15 @@
                     <label for="search-to">업로드 종료일</label>
                     <input id="search-to" type="date" name="uploaded_to" value="{{ selected_uploaded_to }}">
                 </div>
+                <div class="search-field">
+                    <label for="search-sort">정렬</label>
+                    <select id="search-sort" name="sort" onchange="this.form.submit()">
+                        <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>최신순</option>
+                        <option value="oldest" {% if selected_sort == 'oldest' %}selected{% endif %}>오래된순</option>
+                        <option value="slowest" {% if selected_sort == 'slowest' %}selected{% endif %}>처리시간 느린순</option>
+                        <option value="fastest" {% if selected_sort == 'fastest' %}selected{% endif %}>처리시간 빠른순</option>
+                    </select>
+                </div>
                 <div class="search-actions">
                     <button type="submit" class="btn btn-search">검색</button>
                     <a href="{% url 'receipt-list' %}" class="btn btn-reset">초기화</a>
@@ -588,12 +644,12 @@
 
         <div class="filters">
             <a href="{% url 'receipt-list' %}" class="filter-link {% if not selected_status and not selected_error_code %}active{% endif %}">전체</a>
-            <a href="{% url 'receipt-list' %}?status=pending&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'pending' %}active{% endif %}">대기중</a>
-            <a href="{% url 'receipt-list' %}?status=processing&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'processing' %}active{% endif %}">처리중</a>
-            <a href="{% url 'receipt-list' %}?status=completed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'completed' %}active{% endif %}">완료</a>
-            <a href="{% url 'receipt-list' %}?status=failed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
+            <a href="{% url 'receipt-list' %}?status=pending&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}&sort={{ selected_sort }}" class="filter-link {% if selected_status == 'pending' %}active{% endif %}">대기중</a>
+            <a href="{% url 'receipt-list' %}?status=processing&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}&sort={{ selected_sort }}" class="filter-link {% if selected_status == 'processing' %}active{% endif %}">처리중</a>
+            <a href="{% url 'receipt-list' %}?status=completed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}&sort={{ selected_sort }}" class="filter-link {% if selected_status == 'completed' %}active{% endif %}">완료</a>
+            <a href="{% url 'receipt-list' %}?status=failed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}&sort={{ selected_sort }}" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
             {% for row in failed_count_by_code %}
-            <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
+            <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}&sort={{ selected_sort }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
                 {{ row.label }} ({{ row.count }})
             </a>
             {% endfor %}
@@ -617,7 +673,7 @@
             </thead>
             <tbody>
                 {% for receipt in receipts %}
-                <tr>
+                <tr data-receipt-id="{{ receipt.id }}" data-status="{{ receipt.processing_status }}"{% if receipt.processing_status == 'pending' or receipt.processing_status == 'processing' %} class="row-polling"{% endif %}>
                     <td class="checkbox-cell">
                         <input type="checkbox" class="row-checkbox" name="selected_receipt_ids" value="{{ receipt.id }}" aria-label="영수증 {{ receipt.id }} 선택">
                     </td>
@@ -663,6 +719,24 @@
         </table>
         </div>
         </form>
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+            <a href="{% url 'receipt-list' %}?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_error_code %}error_code={{ selected_error_code }}&{% endif %}{% if selected_q %}q={{ selected_q|urlencode }}&{% endif %}{% if selected_uploaded_from %}uploaded_from={{ selected_uploaded_from }}&{% endif %}{% if selected_uploaded_to %}uploaded_to={{ selected_uploaded_to }}&{% endif %}sort={{ selected_sort }}&page={{ page_obj.previous_page_number }}" class="page-link">← 이전</a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <span class="page-link active">{{ num }}</span>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <a href="{% url 'receipt-list' %}?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_error_code %}error_code={{ selected_error_code }}&{% endif %}{% if selected_q %}q={{ selected_q|urlencode }}&{% endif %}{% if selected_uploaded_from %}uploaded_from={{ selected_uploaded_from }}&{% endif %}{% if selected_uploaded_to %}uploaded_to={{ selected_uploaded_to }}&{% endif %}sort={{ selected_sort }}&page={{ num }}" class="page-link">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a href="{% url 'receipt-list' %}?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_error_code %}error_code={{ selected_error_code }}&{% endif %}{% if selected_q %}q={{ selected_q|urlencode }}&{% endif %}{% if selected_uploaded_from %}uploaded_from={{ selected_uploaded_from }}&{% endif %}{% if selected_uploaded_to %}uploaded_to={{ selected_uploaded_to }}&{% endif %}sort={{ selected_sort }}&page={{ page_obj.next_page_number }}" class="page-link">다음 →</a>
+            {% endif %}
+            <span class="page-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 페이지 (총 {{ page_obj.paginator.count }}건)</span>
+        </div>
+        {% endif %}
         {% else %}
         <div class="empty">
             <p>등록된 영수증이 없습니다.</p>
@@ -720,6 +794,37 @@
             }
 
             updateDeleteButtonState();
+        })();
+
+        // 대기중·처리중 행 실시간 상태 폴링
+        (function () {
+            var activeRows = Array.from(document.querySelectorAll('tr[data-receipt-id]')).filter(function (row) {
+                var s = row.dataset.status;
+                return s === 'pending' || s === 'processing';
+            });
+
+            if (activeRows.length === 0) return;
+
+            var pollTimer = null;
+
+            function poll() {
+                var checks = activeRows.map(function (row) {
+                    var id = row.dataset.receiptId;
+                    return fetch('/receipts/' + id + '/status/', { credentials: 'same-origin' })
+                        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('HTTP ' + res.status)); })
+                        .then(function (data) { return { changed: data.status !== row.dataset.status }; })
+                        .catch(function () { return { changed: false }; });
+                });
+
+                Promise.all(checks).then(function (results) {
+                    if (results.some(function (r) { return r.changed; })) {
+                        clearInterval(pollTimer);
+                        window.location.reload();
+                    }
+                });
+            }
+
+            pollTimer = setInterval(poll, 4000);
         })();
     </script>
 </body>

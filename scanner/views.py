@@ -83,10 +83,17 @@ class ReceiptListView(ListView):
     model = Receipt
     template_name = 'scanner/receipt_list.html'
     context_object_name = 'receipts'
-    ordering = ['-uploaded_at']
+    paginate_by = 20
+
+    VALID_SORT_OPTIONS = {
+        'newest': '-uploaded_at',
+        'oldest': 'uploaded_at',
+        'slowest': '-processing_duration_ms',
+        'fastest': 'processing_duration_ms',
+    }
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Receipt.objects.all()
 
         status = self.request.GET.get('status', '').strip()
         error_code = self.request.GET.get('error_code', '').strip()
@@ -130,7 +137,9 @@ class ReceiptListView(ListView):
         if uploaded_to_date:
             queryset = queryset.filter(uploaded_at__date__lte=uploaded_to_date)
 
-        return queryset.distinct()
+        sort = self.request.GET.get('sort', 'newest')
+        ordering = self.VALID_SORT_OPTIONS.get(sort, '-uploaded_at')
+        return queryset.distinct().order_by(ordering)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -201,6 +210,7 @@ class ReceiptListView(ListView):
         context['selected_q'] = self.request.GET.get('q', '').strip()
         context['selected_uploaded_from'] = self.request.GET.get('uploaded_from', '').strip()
         context['selected_uploaded_to'] = self.request.GET.get('uploaded_to', '').strip()
+        context['selected_sort'] = self.request.GET.get('sort', 'newest')
         return context
 
 
