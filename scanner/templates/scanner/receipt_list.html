@@ -569,7 +569,7 @@
                 <button type="submit" class="btn btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
             {% endif %}
-            <form method="post" action="{% url 'receipt-delete-selected' %}" class="bulk-select-form" onsubmit="return confirm('선택한 영수증을 삭제할까요?');">
+            <form method="post" action="{% url 'receipt-delete-selected' %}" class="bulk-select-form" id="bulk-select-form">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-bulk-retry" id="bulk-delete-btn" disabled>선택 삭제</button>
             </form>
@@ -656,8 +656,6 @@
         </div>
         
         {% if receipts %}
-        <form method="post" action="{% url 'receipt-delete-selected' %}" id="bulk-delete-form">
-        {% csrf_token %}
         <div class="table-wrap">
         <table>
             <thead>
@@ -718,7 +716,6 @@
             </tbody>
         </table>
         </div>
-        </form>
         {% if is_paginated %}
         <div class="pagination">
             {% if page_obj.has_previous %}
@@ -780,16 +777,24 @@
             });
 
             const bulkDeleteButton = document.getElementById('bulk-delete-btn');
-            const bulkDeleteForm = document.getElementById('bulk-delete-form');
-            if (bulkDeleteButton && bulkDeleteForm) {
+            const bulkSelectForm = document.getElementById('bulk-select-form');
+            if (bulkDeleteButton && bulkSelectForm) {
                 bulkDeleteButton.addEventListener('click', function (event) {
                     event.preventDefault();
-                    if (bulkDeleteButton.disabled) {
-                        return;
-                    }
-                    if (confirm('선택한 영수증을 삭제할까요?')) {
-                        bulkDeleteForm.submit();
-                    }
+                    if (bulkDeleteButton.disabled) { return; }
+                    var selectedCheckboxes = rowCheckboxes.filter(function (c) { return c.checked; });
+                    if (selectedCheckboxes.length === 0) { return; }
+                    if (!confirm('선택한 영수증 ' + selectedCheckboxes.length + '건을 삭제할까요?')) { return; }
+                    // 기존 hidden input 제거 후 재추가
+                    Array.from(bulkSelectForm.querySelectorAll('input[name="selected_receipt_ids"]')).forEach(function (el) { el.remove(); });
+                    selectedCheckboxes.forEach(function (checkbox) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'selected_receipt_ids';
+                        input.value = checkbox.value;
+                        bulkSelectForm.appendChild(input);
+                    });
+                    bulkSelectForm.submit();
                 });
             }
 
