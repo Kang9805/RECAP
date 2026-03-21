@@ -89,6 +89,31 @@
             background: rgba(255, 255, 255, 0.92);
             border: 1px solid rgba(217, 226, 236, 0.92);
         }
+        .messages {
+            margin-bottom: 14px;
+            display: grid;
+            gap: 8px;
+        }
+        .message {
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            font-weight: 700;
+        }
+        .message-success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .message-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .message-info {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
         .form-group {
             margin-bottom: 20px;
         }
@@ -105,6 +130,34 @@
             border-radius: var(--radius-md);
             background: linear-gradient(180deg, #fbfffe 0%, #f1fbf8 100%);
             cursor: pointer;
+        }
+        .dropzone {
+            padding: 16px;
+            border: 1.5px dashed #9fcfc5;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fbfffe 0%, #f1fbf8 100%);
+        }
+        .dropzone.is-over {
+            border-color: #14b8a6;
+            background: linear-gradient(180deg, #f0fffb 0%, #e7fbf5 100%);
+        }
+        .dropzone p {
+            margin: 0 0 10px;
+            color: #475467;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .selected-files {
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .selected-files ul {
+            margin: 8px 0 0;
+            padding-left: 18px;
+        }
+        .selected-files li {
+            margin-bottom: 4px;
         }
         .field-note {
             margin-top: 10px;
@@ -151,6 +204,13 @@
 </head>
 <body>
     <div class="container">
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
         <div class="hero">
             <span class="eyebrow">Receipt Intake</span>
             <h1>새 영수증을 업로드하세요.</h1>
@@ -164,16 +224,74 @@
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
-                <label for="id_image">이미지 선택</label>
-                {{ form.image }}
+                <label for="id_images">이미지 선택</label>
+                <div class="dropzone" id="upload-dropzone">
+                    <p>여러 파일을 한 번에 업로드할 수 있습니다. 파일을 이 영역으로 드래그하거나 아래 선택 버튼을 사용하세요.</p>
+                    <input id="id_images" type="file" name="images" accept="image/*" multiple required>
+                    <div class="selected-files" id="selected-files">선택된 파일이 없습니다.</div>
+                </div>
                 <p class="field-note">JPG, PNG 같은 일반 이미지 형식을 권장합니다. 가능하면 영수증 전체가 잘 보이도록 정면에서 촬영한 이미지를 사용하세요.</p>
             </div>
-            <button type="submit">OCR 작업 시작하기</button>
+            <button type="submit" id="submit-upload-btn">OCR 작업 시작하기</button>
         </form>
         </div>
         <div class="links">
             <a href="{% url 'receipt-list' %}">목록으로 돌아가기</a>
         </div>
     </div>
+    <script>
+        (function () {
+            const dropzone = document.getElementById('upload-dropzone');
+            const input = document.getElementById('id_images');
+            const selectedFiles = document.getElementById('selected-files');
+            const submitButton = document.getElementById('submit-upload-btn');
+
+            function renderSelectedFiles() {
+                const files = Array.from(input.files || []);
+                if (!files.length) {
+                    selectedFiles.textContent = '선택된 파일이 없습니다.';
+                    submitButton.disabled = false;
+                    return;
+                }
+
+                const listItems = files.slice(0, 5).map(function (file) {
+                    return '<li>' + file.name + '</li>';
+                }).join('');
+
+                const extra = files.length > 5
+                    ? '<li>외 ' + (files.length - 5) + '개</li>'
+                    : '';
+
+                selectedFiles.innerHTML =
+                    '<strong>선택 파일 ' + files.length + '개</strong>' +
+                    '<ul>' + listItems + extra + '</ul>';
+            }
+
+            ['dragenter', 'dragover'].forEach(function (eventName) {
+                dropzone.addEventListener(eventName, function (event) {
+                    event.preventDefault();
+                    dropzone.classList.add('is-over');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(function (eventName) {
+                dropzone.addEventListener(eventName, function (event) {
+                    event.preventDefault();
+                    dropzone.classList.remove('is-over');
+                });
+            });
+
+            dropzone.addEventListener('drop', function (event) {
+                if (!event.dataTransfer || !event.dataTransfer.files.length) {
+                    return;
+                }
+                input.files = event.dataTransfer.files;
+                renderSelectedFiles();
+            });
+
+            input.addEventListener('change', renderSelectedFiles);
+            renderSelectedFiles();
+        })();
+    </script>
 </body>
 </html>

@@ -187,6 +187,57 @@
             background: rgba(255, 255, 255, 0.78);
             border: 1px solid rgba(217, 226, 236, 0.92);
         }
+        .search-panel {
+            margin-bottom: 20px;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            display: grid;
+            gap: 12px;
+        }
+        .search-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+        }
+        .search-field {
+            display: grid;
+            gap: 6px;
+        }
+        .search-field label {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #667085;
+        }
+        .search-field input {
+            width: 100%;
+            border: 1px solid #d1dae4;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: #fff;
+        }
+        .search-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-search {
+            background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
+            color: #fff;
+            box-shadow: 0 10px 18px rgba(20, 184, 166, 0.2);
+        }
+        .btn-reset {
+            background: #eef3f7;
+            color: #334155;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -411,6 +462,9 @@
             .hero {
                 grid-template-columns: 1fr;
             }
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
             .header-row {
                 flex-direction: column;
                 align-items: flex-start;
@@ -474,6 +528,33 @@
             </form>
         </div>
 
+        <form method="get" class="search-panel">
+            <div class="search-grid">
+                <div class="search-field">
+                    <label for="search-q">키워드</label>
+                    <input id="search-q" type="text" name="q" value="{{ selected_q }}" placeholder="영수증 ID, 상품명, OCR 텍스트, 오류 메시지">
+                </div>
+                <div class="search-field">
+                    <label for="search-from">업로드 시작일</label>
+                    <input id="search-from" type="date" name="uploaded_from" value="{{ selected_uploaded_from }}">
+                </div>
+                <div class="search-field">
+                    <label for="search-to">업로드 종료일</label>
+                    <input id="search-to" type="date" name="uploaded_to" value="{{ selected_uploaded_to }}">
+                </div>
+                <div class="search-actions">
+                    <button type="submit" class="btn btn-search">검색</button>
+                    <a href="{% url 'receipt-list' %}" class="btn btn-reset">초기화</a>
+                </div>
+            </div>
+            {% if selected_status %}
+            <input type="hidden" name="status" value="{{ selected_status }}">
+            {% endif %}
+            {% if selected_error_code %}
+            <input type="hidden" name="error_code" value="{{ selected_error_code }}">
+            {% endif %}
+        </form>
+
         <div class="dashboard">
             <div class="stat-card"><span class="stat-caption">전체</span><strong>{{ status_counts.all }}</strong></div>
             <div class="stat-card"><span class="stat-caption">대기중</span><strong>{{ status_counts.pending }}</strong></div>
@@ -507,12 +588,12 @@
 
         <div class="filters">
             <a href="{% url 'receipt-list' %}" class="filter-link {% if not selected_status and not selected_error_code %}active{% endif %}">전체</a>
-            <a href="{% url 'receipt-list' %}?status=pending" class="filter-link {% if selected_status == 'pending' %}active{% endif %}">대기중</a>
-            <a href="{% url 'receipt-list' %}?status=processing" class="filter-link {% if selected_status == 'processing' %}active{% endif %}">처리중</a>
-            <a href="{% url 'receipt-list' %}?status=completed" class="filter-link {% if selected_status == 'completed' %}active{% endif %}">완료</a>
-            <a href="{% url 'receipt-list' %}?status=failed" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
+            <a href="{% url 'receipt-list' %}?status=pending&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'pending' %}active{% endif %}">대기중</a>
+            <a href="{% url 'receipt-list' %}?status=processing&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'processing' %}active{% endif %}">처리중</a>
+            <a href="{% url 'receipt-list' %}?status=completed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'completed' %}active{% endif %}">완료</a>
+            <a href="{% url 'receipt-list' %}?status=failed&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_status == 'failed' and not selected_error_code %}active{% endif %}">실패</a>
             {% for row in failed_count_by_code %}
-            <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
+            <a href="{% url 'receipt-list' %}?status=failed&error_code={{ row.processing_error_code }}&q={{ selected_q|urlencode }}&uploaded_from={{ selected_uploaded_from }}&uploaded_to={{ selected_uploaded_to }}" class="filter-link {% if selected_error_code == row.processing_error_code %}active{% endif %}">
                 {{ row.label }} ({{ row.count }})
             </a>
             {% endfor %}

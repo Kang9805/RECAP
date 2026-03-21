@@ -2,15 +2,16 @@ from decimal import Decimal, InvalidOperation
 from datetime import timedelta
 
 from django.db.models import Avg, Count
+from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from django.views.generic import CreateView, ListView, DetailView
-from django.urls import reverse_lazy
+from django.views.generic import ListView, DetailView, View
 from .models import Receipt, ReceiptItem
 from .services.parser import parse_receipt_items_with_unparsed
 from .tasks import process_receipt_ocr_task
@@ -33,34 +34,49 @@ def _get_retryable_failed_receipts_queryset():
     ).exclude(image='')
 
 
-class ReceiptUploadView(CreateView):
-    model = Receipt
-    fields = ['image']
+class ReceiptUploadView(View):
     template_name = 'scanner/receipt_form.html'
-    success_url = reverse_lazy('receipt-list')
-    
-    def form_valid(self, form):
-        response = super().form_valid(form)
 
-        if self.object.image:
-            self.object.processing_status = Receipt.STATUS_PENDING
-            self.object.processing_error_code = Receipt.ERROR_CODE_NONE
-            self.object.processing_error = ''
-            self.object.extracted_text = ''
-            self.object.processing_attempts = 0
-            self.object.processing_duration_ms = None
-            self.object.processing_started_at = None
-            self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error', 'extracted_text', 'processing_attempts', 'processing_duration_ms', 'processing_started_at'])
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        files = [f for f in request.FILES.getlist('images') if f]
+        if not files:
+            messages.error(request, '업로드할 이미지 파일을 1개 이상 선택해주세요.')
+            return render(request, self.template_name)
+
+        queued_count = 0
+        enqueue_failed_count = 0
+
+        for image in files:
+            receipt = Receipt.objects.create(
+                image=image,
+                processing_status=Receipt.STATUS_PENDING,
+                processing_error_code=Receipt.ERROR_CODE_NONE,
+                processing_error='',
+                extracted_text='',
+                processing_attempts=0,
+                processing_duration_ms=None,
+                processing_started_at=None,
+            )
 
             try:
-                process_receipt_ocr_task.delay(self.object.pk)
+                process_receipt_ocr_task.delay(receipt.pk)
+                queued_count += 1
             except Exception as exc:
-                self.object.processing_status = Receipt.STATUS_FAILED
-                self.object.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
-                self.object.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
-                self.object.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+                receipt.processing_status = Receipt.STATUS_FAILED
+                receipt.processing_error_code = Receipt.ERROR_CODE_ENQUEUE_FAILED
+                receipt.processing_error = f'Failed to enqueue OCR task: {str(exc)[:200]}'
+                receipt.save(update_fields=['processing_status', 'processing_error_code', 'processing_error'])
+                enqueue_failed_count += 1
 
-        return response
+        if queued_count:
+            messages.success(request, f'{queued_count}건 업로드 완료, OCR 처리를 시작했습니다.')
+        if enqueue_failed_count:
+            messages.error(request, f'큐 등록 실패 {enqueue_failed_count}건이 있습니다.')
+
+        return redirect('receipt-list')
 
 
 class ReceiptListView(ListView):
@@ -74,6 +90,9 @@ class ReceiptListView(ListView):
 
         status = self.request.GET.get('status', '').strip()
         error_code = self.request.GET.get('error_code', '').strip()
+        q = self.request.GET.get('q', '').strip()
+        uploaded_from = self.request.GET.get('uploaded_from', '').strip()
+        uploaded_to = self.request.GET.get('uploaded_to', '').strip()
 
         valid_statuses = {
             Receipt.STATUS_PENDING,
@@ -93,7 +112,25 @@ class ReceiptListView(ListView):
         if error_code in valid_error_codes:
             queryset = queryset.filter(processing_error_code=error_code)
 
-        return queryset
+        if q:
+            keyword_filter = (
+                Q(extracted_text__icontains=q)
+                | Q(items__name__icontains=q)
+                | Q(processing_error__icontains=q)
+            )
+            if q.isdigit():
+                keyword_filter |= Q(pk=int(q))
+            queryset = queryset.filter(keyword_filter)
+
+        uploaded_from_date = parse_date(uploaded_from) if uploaded_from else None
+        uploaded_to_date = parse_date(uploaded_to) if uploaded_to else None
+
+        if uploaded_from_date:
+            queryset = queryset.filter(uploaded_at__date__gte=uploaded_from_date)
+        if uploaded_to_date:
+            queryset = queryset.filter(uploaded_at__date__lte=uploaded_to_date)
+
+        return queryset.distinct()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -161,6 +198,9 @@ class ReceiptListView(ListView):
         ]
         context['selected_status'] = self.request.GET.get('status', '').strip()
         context['selected_error_code'] = self.request.GET.get('error_code', '').strip()
+        context['selected_q'] = self.request.GET.get('q', '').strip()
+        context['selected_uploaded_from'] = self.request.GET.get('uploaded_from', '').strip()
+        context['selected_uploaded_to'] = self.request.GET.get('uploaded_to', '').strip()
         return context
 
 
