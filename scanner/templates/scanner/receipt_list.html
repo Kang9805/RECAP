@@ -569,14 +569,14 @@
         </div>
         {% endif %}
         
+        {% if retryable_failed_count %}
         <div class="toolbar">
-            {% if retryable_failed_count %}
             <form method="post" action="{% url 'receipt-retry-failed-all' %}" class="bulk-retry-form" onsubmit="return confirm('재처리 가능한 실패건 {{ retryable_failed_count }}건을 재처리할까요? (최대 100건)');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-bulk-retry">실패건 일괄 재처리 ({{ retryable_failed_count }})</button>
             </form>
-            {% endif %}
         </div>
+        {% endif %}
 
         <form method="get" class="search-panel">
             <div class="search-grid">
