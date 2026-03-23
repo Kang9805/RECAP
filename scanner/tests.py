@@ -153,6 +153,12 @@ class BulkDeleteViewsTests(AuthenticatedClientTestCase):
 
 
 class ReceiptListFilterTests(AuthenticatedClientTestCase):
+	def test_list_shows_logged_in_user_and_logout_button(self):
+		response = self.client.get(reverse('receipt-list'))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, '로그아웃')
+		self.assertContains(response, self.user.username)
+
 	def test_list_filters_by_status_and_error_code(self):
 		target = Receipt.objects.create(
 			image=_fake_image_file('f1.jpg'),
