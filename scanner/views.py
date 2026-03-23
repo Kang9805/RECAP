@@ -10,7 +10,7 @@ from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import ListView, DetailView, View
 from .models import Receipt, ReceiptItem
 from .services.parser import parse_receipt_items_with_unparsed
@@ -229,6 +229,7 @@ class ReceiptDetailView(DetailView):
         return context
 
 
+@require_GET
 def receipt_status_api_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
     return JsonResponse(
@@ -421,5 +422,4 @@ def receipt_item_delete_view(request, receipt_pk, item_pk):
     except Exception as e:
         messages.error(request, '항목 삭제 중 오류가 발생했습니다.')
 
-    return redirect('receipt-detail', pk=receipt.pk)
     return redirect('receipt-detail', pk=receipt.pk)
