@@ -8,7 +8,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from django.contrib import messages
+from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,6 +24,29 @@ from .tasks import process_receipt_ocr_task
 MAX_UNIT_PRICE = Decimal('99999999.99')
 MAX_QUANTITY = 999
 MAX_BULK_RETRY_COUNT = 100
+
+
+class SignupView(View):
+    template_name = 'registration/signup.html'
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('receipt-list')
+        return render(request, self.template_name, {'form': UserCreationForm()})
+
+    def post(self, request):
+        if request.user.is_authenticated:
+            return redirect('receipt-list')
+
+        form = UserCreationForm(request.POST)
+        if not form.is_valid():
+            return render(request, self.template_name, {'form': form}, status=400)
+
+        user = form.save()
+        auth_login(request, user)
+        messages.success(request, '회원가입이 완료되었습니다.')
+        next_url = request.POST.get('next') or request.GET.get('next') or 'receipt-list'
+        return redirect(next_url)
 
 
 def _get_retryable_failed_receipts_queryset():

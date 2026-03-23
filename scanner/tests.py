@@ -32,6 +32,27 @@ class AuthenticatedClientTestCase(TestCase):
 		self.client.force_login(self.user)
 
 
+class SignupViewTests(TestCase):
+	def test_signup_page_renders(self):
+		response = self.client.get(reverse('signup'))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, '회원가입')
+
+	def test_signup_creates_user_and_logs_in(self):
+		response = self.client.post(
+			reverse('signup'),
+			{
+				'username': 'newuser',
+				'password1': 'VeryStrongPass123',
+				'password2': 'VeryStrongPass123',
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.assertTrue(get_user_model().objects.filter(username='newuser').exists())
+		self.assertIn('_auth_user_id', self.client.session)
+
+
 class RetryableQuerysetTests(TestCase):
 	def test_get_retryable_failed_receipts_queryset_filters_expected_records(self):
 		retryable_1 = Receipt.objects.create(

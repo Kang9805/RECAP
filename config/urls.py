@@ -22,6 +22,7 @@ from scanner.views import (
     ReceiptUploadView,
     ReceiptListView,
     ReceiptDetailView,
+    SignupView,
     receipt_status_api_view,
     receipt_delete_view,
     receipt_delete_selected_view,
@@ -35,6 +36,7 @@ from scanner.views import (
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('accounts/signup/', SignupView.as_view(), name='signup'),
     path('', ReceiptListView.as_view(), name='receipt-list'),
     path('receipts/upload/', ReceiptUploadView.as_view(), name='receipt-upload'),
     path('receipts/<int:pk>/', ReceiptDetailView.as_view(), name='receipt-detail'),
