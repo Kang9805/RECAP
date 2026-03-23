@@ -3,6 +3,7 @@ from unittest.mock import patch
 from datetime import timedelta
 from io import StringIO
 
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -18,6 +19,17 @@ from .views import _get_retryable_failed_receipts_queryset
 def _fake_image_file(name='receipt.jpg'):
 	# Minimal valid payload for ImageField path tests.
 	return SimpleUploadedFile(name, b'fake-image-bytes', content_type='image/jpeg')
+
+
+class AuthenticatedClientTestCase(TestCase):
+	def setUp(self):
+		super().setUp()
+		user_model = get_user_model()
+		self.user = user_model.objects.create_user(
+			username='tester',
+			password='testpass123',
+		)
+		self.client.force_login(self.user)
 
 
 class RetryableQuerysetTests(TestCase):
@@ -63,7 +75,7 @@ class RetryableQuerysetTests(TestCase):
 		self.assertEqual(ids, {enqueue_failed.id})
 
 
-class RetryViewsTests(TestCase):
+class RetryViewsTests(AuthenticatedClientTestCase):
 	@patch('scanner.views.process_receipt_ocr_task.delay')
 	def test_retry_failed_all_requeues_only_retryable_failed(self, delay_mock):
 		retryable = Receipt.objects.create(
@@ -95,7 +107,7 @@ class RetryViewsTests(TestCase):
 		delay_mock.assert_called_once_with(retryable.pk)
 
 
-class BulkDeleteViewsTests(TestCase):
+class BulkDeleteViewsTests(AuthenticatedClientTestCase):
 	def test_delete_selected_deletes_only_checked_receipts(self):
 		target_1 = Receipt.objects.create(image=_fake_image_file('d1.jpg'))
 		target_2 = Receipt.objects.create(image=_fake_image_file('d2.jpg'))
@@ -119,7 +131,7 @@ class BulkDeleteViewsTests(TestCase):
 		self.assertTrue(Receipt.objects.filter(pk=receipt.pk).exists())
 
 
-class ReceiptListFilterTests(TestCase):
+class ReceiptListFilterTests(AuthenticatedClientTestCase):
 	def test_list_filters_by_status_and_error_code(self):
 		target = Receipt.objects.create(
 			image=_fake_image_file('f1.jpg'),
@@ -151,7 +163,7 @@ class ReceiptListFilterTests(TestCase):
 		self.assertIn('failed_count_by_code', response.context)
 
 
-class ReceiptStatusApiTests(TestCase):
+class ReceiptStatusApiTests(AuthenticatedClientTestCase):
 	def test_status_api_returns_expected_payload_shape(self):
 		receipt = Receipt.objects.create(
 			image=_fake_image_file('s1.jpg'),
