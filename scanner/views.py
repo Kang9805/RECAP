@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
@@ -34,7 +36,7 @@ def _get_retryable_failed_receipts_queryset():
     ).exclude(image='')
 
 
-class ReceiptUploadView(View):
+class ReceiptUploadView(LoginRequiredMixin, View):
     template_name = 'scanner/receipt_form.html'
 
     def get(self, request):
@@ -79,7 +81,7 @@ class ReceiptUploadView(View):
         return redirect('receipt-list')
 
 
-class ReceiptListView(ListView):
+class ReceiptListView(LoginRequiredMixin, ListView):
     model = Receipt
     template_name = 'scanner/receipt_list.html'
     context_object_name = 'receipts'
@@ -214,7 +216,7 @@ class ReceiptListView(ListView):
         return context
 
 
-class ReceiptDetailView(DetailView):
+class ReceiptDetailView(LoginRequiredMixin, DetailView):
     model = Receipt
     template_name = 'scanner/receipt_detail.html'
     context_object_name = 'receipt'
@@ -229,6 +231,7 @@ class ReceiptDetailView(DetailView):
         return context
 
 
+@login_required
 @require_GET
 def receipt_status_api_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
@@ -268,6 +271,7 @@ def _parse_item_form(request):
     return name, quantity, unit_price
 
 
+@login_required
 @require_POST
 def receipt_delete_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
@@ -275,6 +279,7 @@ def receipt_delete_view(request, pk):
     return redirect('receipt-list')
 
 
+@login_required
 @require_POST
 def receipt_delete_selected_view(request):
     selected_ids_raw = request.POST.getlist('selected_receipt_ids')
@@ -304,6 +309,7 @@ def receipt_delete_selected_view(request):
     return redirect('receipt-list')
 
 
+@login_required
 @require_POST
 def receipt_retry_view(request, pk):
     receipt = get_object_or_404(Receipt, pk=pk)
@@ -337,6 +343,7 @@ def receipt_retry_view(request, pk):
     return redirect('receipt-detail', pk=receipt.pk)
 
 
+@login_required
 @require_POST
 def receipt_retry_failed_all_view(request):
     failed_receipts = _get_retryable_failed_receipts_queryset().order_by('-uploaded_at')[:MAX_BULK_RETRY_COUNT]
@@ -372,6 +379,7 @@ def receipt_retry_failed_all_view(request):
     return redirect('receipt-list')
 
 
+@login_required
 @require_POST
 def receipt_item_create_view(request, receipt_pk):
     receipt = get_object_or_404(Receipt, pk=receipt_pk)
@@ -392,6 +400,7 @@ def receipt_item_create_view(request, receipt_pk):
     return redirect('receipt-detail', pk=receipt.pk)
 
 
+@login_required
 @require_POST
 def receipt_item_update_view(request, receipt_pk, item_pk):
     receipt = get_object_or_404(Receipt, pk=receipt_pk)
@@ -411,6 +420,7 @@ def receipt_item_update_view(request, receipt_pk, item_pk):
     return redirect('receipt-detail', pk=receipt.pk)
 
 
+@login_required
 @require_POST
 def receipt_item_delete_view(request, receipt_pk, item_pk):
     receipt = get_object_or_404(Receipt, pk=receipt_pk)
