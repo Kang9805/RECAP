@@ -382,8 +382,11 @@ def receipt_item_create_view(request, receipt_pk):
             quantity=quantity,
             unit_price=unit_price,
         )
-    except (ValueError, InvalidOperation):
-        pass
+        messages.success(request, f'항목 "{name}"이 추가되었습니다.')
+    except (ValueError, InvalidOperation) as e:
+        messages.error(request, f'항목 추가 실패: {str(e)}')
+    except Exception as e:
+        messages.error(request, '항목 추가 중 오류가 발생했습니다.')
 
     return redirect('receipt-detail', pk=receipt.pk)
 
@@ -398,8 +401,11 @@ def receipt_item_update_view(request, receipt_pk, item_pk):
         item.quantity = quantity
         item.unit_price = unit_price
         item.save(update_fields=['name', 'quantity', 'unit_price'])
-    except (ValueError, InvalidOperation):
-        pass
+        messages.success(request, f'항목 "{name}"이 수정되었습니다.')
+    except (ValueError, InvalidOperation) as e:
+        messages.error(request, f'항목 수정 실패: {str(e)}')
+    except Exception as e:
+        messages.error(request, '항목 수정 중 오류가 발생했습니다.')
 
     return redirect('receipt-detail', pk=receipt.pk)
 
@@ -408,5 +414,12 @@ def receipt_item_update_view(request, receipt_pk, item_pk):
 def receipt_item_delete_view(request, receipt_pk, item_pk):
     receipt = get_object_or_404(Receipt, pk=receipt_pk)
     item = get_object_or_404(ReceiptItem, pk=item_pk, receipt=receipt)
-    item.delete()
+    item_name = item.name
+    try:
+        item.delete()
+        messages.success(request, f'항목 "{item_name}"이 삭제되었습니다.')
+    except Exception as e:
+        messages.error(request, '항목 삭제 중 오류가 발생했습니다.')
+
+    return redirect('receipt-detail', pk=receipt.pk)
     return redirect('receipt-detail', pk=receipt.pk)
