@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 — RECAP</title>
+    <style>
+        :root {
+            --ink: #1d2736;
+            --muted: #667085;
+            --panel: #ffffff;
+            --panel-soft: rgba(255, 255, 255, 0.82);
+            --line: #d9e2ec;
+            --brand: #0f766e;
+            --brand-dark: #115e59;
+            --brand-soft: #d7f7f0;
+            --danger: #b42318;
+            --danger-soft: #ffe2dd;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.13);
+            --radius-xl: 28px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            color: var(--ink);
+            font-family: "Pretendard", "SUIT", "Noto Sans KR", sans-serif;
+            background:
+                radial-gradient(circle at 12% 14%, rgba(143, 240, 224, 0.65) 0%, rgba(143, 240, 224, 0) 34%),
+                radial-gradient(circle at 88% 6%,  rgba(255, 229, 180, 0.75) 0%, rgba(255, 229, 180, 0) 32%),
+                linear-gradient(180deg, #f7fbfa 0%, #eef4f7 52%, #f7f9fb 100%);
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--panel-soft);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow);
+            padding: 44px 40px 40px;
+        }
+
+        /* 로고 영역 */
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 20px rgba(15, 118, 110, 0.28);
+        }
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .logo h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            color: var(--ink);
+        }
+        .logo p {
+            margin-top: 4px;
+            font-size: 13.5px;
+            color: var(--muted);
+        }
+
+        /* 에러 박스 */
+        .error-box {
+            background: var(--danger-soft);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            margin-bottom: 20px;
+            font-size: 13.5px;
+            color: var(--danger);
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .error-box svg {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            margin-top: 1px;
+        }
+
+        /* 폼 */
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 6px;
+            letter-spacing: 0.1px;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 11px 14px;
+            font-size: 14.5px;
+            font-family: inherit;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid var(--line);
+            border-radius: var(--radius-sm);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+        }
+        input::placeholder { color: #a8b5c5; }
+
+        /* 로그인 버튼 */
+        .btn-login {
+            width: 100%;
+            padding: 13px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            color: #ffffff;
+            background: linear-gradient(135deg, var(--brand) 0%, #0e9488 100%);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            margin-top: 8px;
+            box-shadow: 0 4px 14px rgba(15, 118, 110, 0.3);
+            transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+            letter-spacing: 0.2px;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 100%);
+            box-shadow: 0 6px 18px rgba(15, 118, 110, 0.38);
+        }
+        .btn-login:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <div class="logo-icon">
+                <!-- 영수증 아이콘 -->
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 4v16l2-1 2 1 2-1 2 1 2-1 2 1 2-1V4l-2 1-2-1-2 1-2-1-2 1-2-1z"/>
+                    <path d="M8 9h8M8 13h6"/>
+                </svg>
+            </div>
+            <h1>RECAP</h1>
+            <p>영수증 분석 시스템</p>
+        </div>
+
+        {% if form.errors %}
+        <div class="error-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>아이디 또는 비밀번호가 올바르지 않습니다.</span>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <div class="form-group">
+                <label for="id_username">아이디</label>
+                <input type="text" id="id_username" name="username"
+                       value="{{ form.username.value|default:'' }}"
+                       placeholder="사용자명 입력" autofocus autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="id_password">비밀번호</label>
+                <input type="password" id="id_password" name="password"
+                       placeholder="비밀번호 입력" autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn-login">로그인</button>
+        </form>
+    </div>
+</body>
+</html>
