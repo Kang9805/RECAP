@@ -158,23 +158,23 @@ class ReceiptListFilterTests(AuthenticatedClientTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, '로그아웃')
 		self.assertContains(response, self.user.username)
-vi-self.assertContains(response, '현재 보기')
-vi-self.assertContains(response, '즉시 재처리 가능')
+		self.assertContains(response, '현재 보기')
+		self.assertContains(response, '즉시 재처리 가능')
 
-vi-def test_list_shows_failed_receipt_summary_details(self):
-vi-receipt = Receipt.objects.create(
-image=_fake_image_file('f0.jpg'),
-processing_status=Receipt.STATUS_FAILED,
-processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
-processing_error='timeout while reading receipt image from OCR service',
-processing_attempts=3,
-)
+	def test_list_shows_failed_receipt_summary_details(self):
+		receipt = Receipt.objects.create(
+			image=_fake_image_file('f0.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+			processing_error='timeout while reading receipt image from OCR service',
+			processing_attempts=3,
+		)
 
-vi-response = self.client.get(reverse('receipt-list'))
-vi-self.assertEqual(response.status_code, 200)
-vi-self.assertContains(response, f'영수증 #{receipt.id}')
-vi-self.assertContains(response, 'OCR failed')
-vi-self.assertContains(response, 'timeout while reading receipt image from OCR service')
+		response = self.client.get(reverse('receipt-list'))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, f'영수증 #{receipt.id}')
+		self.assertContains(response, 'OCR failed')
+		self.assertContains(response, 'timeout while reading receipt image from OCR service')
 
 	def test_list_filters_by_status_and_error_code(self):
 		target = Receipt.objects.create(
@@ -205,6 +205,39 @@ vi-self.assertContains(response, 'timeout while reading receipt image from OCR s
 
 		self.assertIn('status_counts', response.context)
 		self.assertIn('failed_count_by_code', response.context)
+
+
+class ReceiptDetailViewTests(AuthenticatedClientTestCase):
+	def test_detail_shows_operational_summary_and_item_total(self):
+		receipt = Receipt.objects.create(
+			image=_fake_image_file('detail1.jpg'),
+			processing_status=Receipt.STATUS_COMPLETED,
+			extracted_text='상호명\n김밥 2 3500',
+			processing_attempts=2,
+			processing_duration_ms=1870,
+		)
+		receipt.items.create(name='김밥', quantity=2, unit_price='3500.00')
+
+		response = self.client.get(reverse('receipt-detail', args=[receipt.pk]))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, '현재 분석 포인트')
+		self.assertContains(response, '품목 합계')
+		self.assertContains(response, '7000.00원')
+		self.assertContains(response, 'OCR 처리와 품목 파싱이 끝난 상태입니다.')
+
+	def test_failed_detail_shows_error_code_and_retry_action(self):
+		receipt = Receipt.objects.create(
+			image=_fake_image_file('detail2.jpg'),
+			processing_status=Receipt.STATUS_FAILED,
+			processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+			processing_error='OCR failed after retries: upstream timeout',
+		)
+
+		response = self.client.get(reverse('receipt-detail', args=[receipt.pk]))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'OCR failed')
+		self.assertContains(response, 'OCR failed after retries: upstream timeout')
+		self.assertContains(response, '재처리')
 
 
 class ReceiptStatusApiTests(AuthenticatedClientTestCase):

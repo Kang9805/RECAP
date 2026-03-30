@@ -163,6 +163,48 @@
             gap: 12px;
             margin-top: 20px;
         }
+        .focus-strip {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .focus-card {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(248,250,252,.94) 100%);
+            box-shadow: var(--shadow-soft);
+        }
+        .focus-card strong {
+            display: block;
+            margin-top: 8px;
+            color: #101828;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+        }
+        .focus-card p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .focus-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-weight: 800;
+            color: #667085;
+        }
+        .focus-card.emphasis {
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.1) 0%, rgba(255,255,255,.97) 58%, rgba(20, 184, 166, 0.08) 100%);
+        }
+        .focus-card.warn {
+            background: linear-gradient(135deg, rgba(255, 248, 235, 0.96) 0%, rgba(255,255,255,.97) 100%);
+        }
+        .focus-card.danger {
+            background: linear-gradient(135deg, rgba(254, 242, 242, 0.98) 0%, rgba(255,255,255,.97) 100%);
+        }
         .metric-card {
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid rgba(217, 226, 236, 0.92);
@@ -244,6 +286,62 @@
             border: 1px solid #fecaca;
             color: #991b1b;
         }
+        .overview-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .info-card {
+            padding: 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+        .info-card span {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-weight: 800;
+            color: #7b8794;
+        }
+        .info-card strong {
+            display: block;
+            margin-top: 8px;
+            color: #101828;
+            font-size: 16px;
+        }
+        .info-card p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .status-panel {
+            display: grid;
+            gap: 14px;
+        }
+        .status-banner {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(248,250,252,.94) 100%);
+        }
+        .status-banner .status-chip {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .status-banner p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
         .messages {
             margin-bottom: 14px;
             display: grid;
@@ -280,11 +378,26 @@
             margin: 0;
         }
         .image-preview img {
-            max-width: 400px;
-            max-height: 400px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 420px;
+            object-fit: contain;
             border: 1px solid var(--line);
             border-radius: var(--radius-lg);
             box-shadow: 0 10px 30px rgba(2, 132, 199, 0.12);
+        }
+        .section-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .section-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
         }
         .extracted-text {
             background-color: #f8fafc;
@@ -402,6 +515,11 @@
             .hero {
                 grid-template-columns: 1fr;
             }
+            .focus-strip,
+            .overview-grid,
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
             .receipt-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -446,6 +564,10 @@
                     <p>{{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</p>
                 </div>
                 <div>
+                    <strong>현재 상태</strong>
+                    <p>{{ status_label }}</p>
+                </div>
+                <div>
                     <strong>운영 메모</strong>
                     <p>실패 상태에서는 원인 메시지를 확인한 뒤 재처리를 바로 실행할 수 있고, 완료 후에는 항목 단위 수정도 가능합니다.</p>
                 </div>
@@ -459,57 +581,140 @@
             {% endfor %}
         </div>
         {% endif %}
-        
-        <div class="surface receipt-info">
-            <p><strong>ID:</strong> #{{ receipt.id }}</p>
-            <p><strong>업로드 날짜:</strong> {{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</p>
-            <p><strong>처리 시도 횟수:</strong> {{ receipt.processing_attempts }}</p>
-            <p>
-                <strong>처리 시간:</strong>
-                {% if receipt.processing_duration_ms %}
-                    {{ receipt.processing_duration_ms }} ms
-                {% else %}
-                    -
-                {% endif %}
-            </p>
-            <p>
-                <strong>처리 상태:</strong>
-                {% if receipt.processing_status == 'completed' %}
-                    <span class="status-chip status-completed">완료</span>
-                {% elif receipt.processing_status == 'processing' %}
-                    <span class="status-chip status-processing">처리중</span>
-                {% elif receipt.processing_status == 'failed' %}
-                    <span class="status-chip status-failed">실패</span>
-                {% else %}
-                    <span class="status-chip status-pending">대기중</span>
-                {% endif %}
-            </p>
-            {% if receipt.processing_status == 'processing' or receipt.processing_status == 'pending' %}
-            <div class="notice notice-processing">
-                OCR 처리 중입니다. 잠시 후 자동으로 새로고침됩니다.
-            </div>
-            {% endif %}
-            {% if receipt.processing_status == 'failed' and receipt.processing_error %}
-            <div class="notice notice-failed">
-                처리 실패: {{ receipt.processing_error }}
-            </div>
-            <div class="retry-action">
-                <form method="post" action="{% url 'receipt-retry' receipt.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-update">재처리</button>
-                </form>
-            </div>
-            {% endif %}
+
+        <div class="focus-strip">
+            <section class="focus-card emphasis">
+                <span class="focus-label">현재 분석 포인트</span>
+                <strong>
+                    {% if receipt.processing_status == 'failed' %}
+                        실패 원인 확인과 재처리 판단
+                    {% elif receipt.processing_status == 'completed' %}
+                        추출 결과 검토와 항목 보정
+                    {% elif receipt.processing_status == 'processing' %}
+                        OCR 진행 상황 모니터링
+                    {% else %}
+                        대기열 상태 점검
+                    {% endif %}
+                </strong>
+                <p>
+                    {% if receipt.processing_status == 'failed' %}
+                        오류 코드와 상세 메시지를 먼저 확인한 뒤 재처리 여부를 결정하는 흐름에 맞춰 화면을 구성했습니다.
+                    {% elif receipt.processing_status == 'completed' %}
+                        OCR 원문, 미분류 라인, 품목 목록을 한 흐름으로 검토할 수 있도록 배치했습니다.
+                    {% else %}
+                        상태 API가 완료 또는 실패로 바뀌면 상세 화면이 자동으로 새로고침됩니다.
+                    {% endif %}
+                </p>
+            </section>
+            <section class="focus-card">
+                <span class="focus-label">처리 상태</span>
+                <strong>{{ status_label }}</strong>
+                <p>{% if receipt.processing_started_at %}시작 시각 {{ receipt.processing_started_at|date:"Y-m-d H:i:s" }}{% else %}아직 처리 시작 시각이 기록되지 않았습니다.{% endif %}</p>
+            </section>
+            <section class="focus-card warn">
+                <span class="focus-label">항목 총액</span>
+                <strong>{% if item_total_amount %}{{ item_total_amount|floatformat:2 }}원{% else %}-{% endif %}</strong>
+                <p>현재 등록된 품목 기준 합계입니다. 품목을 수정하면 이 값도 함께 바뀝니다.</p>
+            </section>
+            <section class="focus-card{% if receipt.processing_status == 'failed' %} danger{% endif %}">
+                <span class="focus-label">오류 코드</span>
+                <strong>{% if receipt.processing_error_code %}{{ error_code_label }}{% else %}없음{% endif %}</strong>
+                <p>{% if receipt.processing_error %}{{ receipt.processing_error|truncatechars:90 }}{% else %}현재 기록된 오류 메시지가 없습니다.{% endif %}</p>
+            </section>
         </div>
         
-        {% if receipt.image %}
-        <div class="surface image-preview">
-            <img src="{{ receipt.image.url }}" alt="Receipt Image">
+        <div class="overview-grid">
+            {% if receipt.image %}
+            <div class="surface image-preview">
+                <img src="{{ receipt.image.url }}" alt="Receipt Image">
+            </div>
+            {% else %}
+            <div class="surface image-preview empty">
+                <p>등록된 이미지가 없습니다.</p>
+            </div>
+            {% endif %}
+
+            <div class="surface status-panel">
+                <div class="status-banner">
+                    {% if receipt.processing_status == 'completed' %}
+                        <span class="status-chip status-completed">완료</span>
+                    {% elif receipt.processing_status == 'processing' %}
+                        <span class="status-chip status-processing">처리중</span>
+                    {% elif receipt.processing_status == 'failed' %}
+                        <span class="status-chip status-failed">실패</span>
+                    {% else %}
+                        <span class="status-chip status-pending">대기중</span>
+                    {% endif %}
+                    <p>
+                        {% if receipt.processing_status == 'completed' %}
+                            OCR 처리와 품목 파싱이 끝난 상태입니다. 아래에서 원문과 항목을 검토하고 필요하면 직접 수정하면 됩니다.
+                        {% elif receipt.processing_status == 'failed' %}
+                            오류 코드와 메시지를 검토한 뒤 재처리하거나 항목을 수동으로 보정할 수 있습니다.
+                        {% elif receipt.processing_status == 'processing' %}
+                            현재 워커가 OCR을 진행 중입니다. 상태가 변경되면 이 페이지가 자동으로 새로고침됩니다.
+                        {% else %}
+                            아직 작업 큐에서 대기 중입니다. 잠시 후 자동 새로고침으로 상태 변화를 확인할 수 있습니다.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <span>업로드 시각</span>
+                        <strong>{{ receipt.uploaded_at|date:"Y-m-d H:i:s" }}</strong>
+                        <p>원본 영수증이 시스템에 등록된 시각입니다.</p>
+                    </div>
+                    <div class="info-card">
+                        <span>처리 시작</span>
+                        <strong>{% if receipt.processing_started_at %}{{ receipt.processing_started_at|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}</strong>
+                        <p>워커가 실제로 OCR을 시작한 시각입니다.</p>
+                    </div>
+                    <div class="info-card">
+                        <span>처리 시도</span>
+                        <strong>{{ receipt.processing_attempts }}회</strong>
+                        <p>재시도 횟수까지 포함한 누적 처리 시도입니다.</p>
+                    </div>
+                    <div class="info-card">
+                        <span>처리 시간</span>
+                        <strong>{% if receipt.processing_duration_ms %}{{ receipt.processing_duration_ms }} ms{% else %}-{% endif %}</strong>
+                        <p>완료 또는 실패 시 측정된 전체 처리 시간입니다.</p>
+                    </div>
+                    <div class="info-card">
+                        <span>오류 코드</span>
+                        <strong>{% if receipt.processing_error_code %}{{ error_code_label }}{% else %}없음{% endif %}</strong>
+                        <p>재처리 가능 여부를 판단할 때 먼저 확인할 값입니다.</p>
+                    </div>
+                    <div class="info-card">
+                        <span>품목 합계</span>
+                        <strong>{% if item_total_amount %}{{ item_total_amount|floatformat:2 }}원{% else %}-{% endif %}</strong>
+                        <p>현재 저장된 품목 목록 기준 계산값입니다.</p>
+                    </div>
+                </div>
+
+                {% if receipt.processing_status == 'processing' or receipt.processing_status == 'pending' %}
+                <div class="notice notice-processing">
+                    OCR 처리 중입니다. 잠시 후 자동으로 새로고침됩니다.
+                </div>
+                {% endif %}
+                {% if receipt.processing_status == 'failed' and receipt.processing_error %}
+                <div class="notice notice-failed">
+                    처리 실패: {{ receipt.processing_error }}
+                </div>
+                <div class="retry-action">
+                    <form method="post" action="{% url 'receipt-retry' receipt.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-update">재처리</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
         </div>
-        {% endif %}
         
         <div class="surface">
-        <h2>추출된 텍스트</h2>
+        <div class="section-head">
+            <h2>추출된 텍스트</h2>
+            <p>OCR 원문을 줄바꿈 그대로 보여줘서 파싱 결과와 비교하기 쉽게 구성했습니다.</p>
+        </div>
         <div class="extracted-text">
             {% if receipt.processing_status != 'completed' %}
                 <span style="color: #999;">처리 완료 후 텍스트가 표시됩니다.</span>
@@ -522,7 +727,10 @@
         </div>
 
         <div class="surface-soft">
-        <h2>미분류 라인</h2>
+        <div class="section-head">
+            <h2>미분류 라인</h2>
+            <p>품목으로 분리되지 않은 줄을 따로 보여줘서 후처리 대상을 빠르게 찾을 수 있습니다.</p>
+        </div>
         {% if receipt.processing_status != 'completed' %}
         <div class="empty">
             <p>처리 완료 후 미분류 라인이 표시됩니다.</p>
@@ -543,7 +751,10 @@
         </div>
         
         <div class="surface">
-        <h2>항목 목록</h2>
+        <div class="section-head">
+            <h2>항목 목록</h2>
+            <p>추출된 품목은 여기서 바로 수정, 삭제, 추가할 수 있습니다.</p>
+        </div>
         {% if receipt.processing_status != 'completed' %}
         <div class="empty">
             <p>처리 완료 후 항목 목록이 표시됩니다.</p>

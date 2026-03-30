@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from datetime import timedelta
 
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Sum, F, DecimalField, ExpressionWrapper
 from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
@@ -248,10 +248,21 @@ class ReceiptDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        total_amount = self.object.items.aggregate(
+            value=Sum(
+                ExpressionWrapper(
+                    F('quantity') * F('unit_price'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+        )['value']
         if self.object.processing_status == Receipt.STATUS_COMPLETED:
             _, unparsed_lines = parse_receipt_items_with_unparsed(self.object.extracted_text or '')
         else:
             unparsed_lines = []
+        context['status_label'] = self.object.get_processing_status_display()
+        context['error_code_label'] = self.object.get_processing_error_code_display()
+        context['item_total_amount'] = total_amount
         context['unparsed_lines'] = unparsed_lines
         return context
 
