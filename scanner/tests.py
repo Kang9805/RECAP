@@ -158,6 +158,23 @@ class ReceiptListFilterTests(AuthenticatedClientTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, '로그아웃')
 		self.assertContains(response, self.user.username)
+vi-self.assertContains(response, '현재 보기')
+vi-self.assertContains(response, '즉시 재처리 가능')
+
+vi-def test_list_shows_failed_receipt_summary_details(self):
+vi-receipt = Receipt.objects.create(
+image=_fake_image_file('f0.jpg'),
+processing_status=Receipt.STATUS_FAILED,
+processing_error_code=Receipt.ERROR_CODE_OCR_FAILED,
+processing_error='timeout while reading receipt image from OCR service',
+processing_attempts=3,
+)
+
+vi-response = self.client.get(reverse('receipt-list'))
+vi-self.assertEqual(response.status_code, 200)
+vi-self.assertContains(response, f'영수증 #{receipt.id}')
+vi-self.assertContains(response, 'OCR failed')
+vi-self.assertContains(response, 'timeout while reading receipt image from OCR service')
 
 	def test_list_filters_by_status_and_error_code(self):
 		target = Receipt.objects.create(

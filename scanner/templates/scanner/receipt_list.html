@@ -345,6 +345,65 @@
         .filters .bulk-select-form {
             margin: 0 0 0 auto;
         }
+        .focus-strip {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .focus-card {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(217, 226, 236, 0.92);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.94) 100%);
+            box-shadow: var(--shadow-soft);
+        }
+        .focus-card strong {
+            display: block;
+            margin-top: 8px;
+            color: #101828;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+        }
+        .focus-card p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .focus-card.emphasis {
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.1) 0%, rgba(255, 255, 255, 0.96) 58%, rgba(20, 184, 166, 0.08) 100%);
+        }
+        .focus-card.warn {
+            background: linear-gradient(135deg, rgba(255, 241, 214, 0.95) 0%, rgba(255, 255, 255, 0.97) 100%);
+        }
+        .focus-card.danger {
+            background: linear-gradient(135deg, rgba(255, 226, 221, 0.95) 0%, rgba(255, 255, 255, 0.97) 100%);
+        }
+        .focus-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 800;
+            color: #667085;
+        }
+        .focus-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .focus-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid #cfe4df;
+            background: rgba(255, 255, 255, 0.92);
+            color: #115e59;
+            font-size: 12px;
+            font-weight: 800;
+        }
         .filter-link {
             display: inline-block;
             padding: 8px 12px;
@@ -406,6 +465,13 @@
         }
         tr:hover {
             background-color: #f7fbfc;
+        }
+        .receipt-row.status-row-failed {
+            background: linear-gradient(180deg, rgba(255, 250, 249, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%);
+        }
+        .receipt-row.status-row-processing,
+        .receipt-row.status-row-pending {
+            background: linear-gradient(180deg, rgba(247, 251, 255, 0.86) 0%, rgba(255, 255, 255, 0.96) 100%);
         }
         .empty {
             text-align: center;
@@ -507,6 +573,76 @@
         .btn-delete:hover {
             text-decoration: underline;
         }
+        .receipt-primary {
+            display: grid;
+            gap: 8px;
+            white-space: normal;
+            min-width: 250px;
+        }
+        .receipt-primary strong {
+            font-size: 15px;
+            color: #101828;
+        }
+        .receipt-subline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .receipt-preview {
+            margin: 0;
+            color: #475467;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .receipt-preview.error {
+            color: #b42318;
+            font-weight: 700;
+        }
+        .status-cell {
+            white-space: normal;
+        }
+        .status-stack {
+            display: grid;
+            gap: 8px;
+        }
+        .status-note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .signal-grid {
+            display: grid;
+            gap: 8px;
+            min-width: 190px;
+        }
+        .signal-chip {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 12px;
+            border: 1px solid #dde5ec;
+            background: rgba(255, 255, 255, 0.88);
+            color: #475467;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .signal-chip strong {
+            color: #101828;
+            font-size: 13px;
+        }
+        .signal-chip.danger {
+            border-color: #f2b8ae;
+            background: #fff5f3;
+            color: #912018;
+        }
+        .signal-chip.warn {
+            border-color: #f4d49c;
+            background: #fff8eb;
+            color: #9a5800;
+        }
         a {
             color: #0f766e;
             text-decoration: none;
@@ -568,6 +704,9 @@
                 grid-template-columns: 1fr;
             }
             .search-grid {
+                grid-template-columns: 1fr;
+            }
+            .focus-strip {
                 grid-template-columns: 1fr;
             }
             .header-row {
@@ -727,6 +866,56 @@
                 <button type="submit" class="btn btn-bulk-retry" id="bulk-delete-btn" disabled>선택 삭제</button>
             </form>
         </div>
+
+        <div class="focus-strip">
+            <section class="focus-card emphasis">
+                <span class="focus-label">현재 보기</span>
+                <strong>
+                    {% if selected_status == 'failed' %}
+                        실패 영수증 집중 보기
+                    {% elif selected_status == 'processing' %}
+                        처리중 영수증 모니터링
+                    {% elif selected_status == 'pending' %}
+                        대기열 점검 화면
+                    {% elif selected_status == 'completed' %}
+                        완료 영수증 검토 화면
+                    {% else %}
+                        전체 영수증 운영 현황
+                    {% endif %}
+                </strong>
+                <p>
+                    {% if selected_q or selected_uploaded_from or selected_uploaded_to or selected_error_code %}
+                        현재 필터가 적용되어 있어 필요한 묶음만 빠르게 검토할 수 있습니다.
+                    {% else %}
+                        전체 흐름을 기준으로 병목, 실패 건, 최근 처리량을 함께 확인할 수 있습니다.
+                    {% endif %}
+                </p>
+                <div class="focus-tags">
+                    <span class="focus-tag">정렬: {{ selected_sort }}</span>
+                    {% if selected_status %}<span class="focus-tag">상태: {{ selected_status }}</span>{% endif %}
+                    {% if selected_error_code %}<span class="focus-tag">오류: {{ selected_error_code }}</span>{% endif %}
+                    {% if selected_q %}<span class="focus-tag">검색어: {{ selected_q }}</span>{% endif %}
+                    {% if selected_uploaded_from %}<span class="focus-tag">시작: {{ selected_uploaded_from }}</span>{% endif %}
+                    {% if selected_uploaded_to %}<span class="focus-tag">종료: {{ selected_uploaded_to }}</span>{% endif %}
+                    {% if not selected_status and not selected_error_code and not selected_q and not selected_uploaded_from and not selected_uploaded_to %}<span class="focus-tag">필터 없음</span>{% endif %}
+                </div>
+            </section>
+            <section class="focus-card warn">
+                <span class="focus-label">즉시 재처리 가능</span>
+                <strong>{{ retryable_failed_count }}건</strong>
+                <p>큐 등록 실패나 OCR 실패 건 중 재시도 가능한 항목만 집계합니다.</p>
+            </section>
+            <section class="focus-card">
+                <span class="focus-label">실시간 모니터링</span>
+                <strong>{{ status_counts.processing }}건</strong>
+                <p>처리중 또는 대기중 행은 자동 새로고침 감시 대상입니다.</p>
+            </section>
+            <section class="focus-card danger">
+                <span class="focus-label">실패 누적</span>
+                <strong>{{ failed_count }}건</strong>
+                <p>오류 코드별 필터로 넘어가면 원인별로 바로 정리할 수 있습니다.</p>
+            </section>
+        </div>
         
         {% if receipts %}
         <div class="table-wrap">
@@ -734,41 +923,78 @@
             <thead>
                 <tr>
                     <th class="checkbox-col"><input type="checkbox" class="master-checkbox" id="select-all-receipts" aria-label="전체 선택"></th>
-                    <th>업로드 날짜</th>
+                    <th>영수증</th>
                     <th>처리 상태</th>
-                    <th>시도</th>
-                    <th>처리시간</th>
-                    <th>상품 개수</th>
+                    <th>운영 신호</th>
                     <th>작업</th>
                 </tr>
             </thead>
             <tbody>
                 {% for receipt in receipts %}
-                <tr data-receipt-id="{{ receipt.id }}" data-status="{{ receipt.processing_status }}"{% if receipt.processing_status == 'pending' or receipt.processing_status == 'processing' %} class="row-polling"{% endif %}>
+                <tr data-receipt-id="{{ receipt.id }}" data-status="{{ receipt.processing_status }}" class="receipt-row status-row-{{ receipt.processing_status }}{% if receipt.processing_status == 'pending' or receipt.processing_status == 'processing' %} row-polling{% endif %}">
                     <td class="checkbox-cell">
                         <input type="checkbox" class="row-checkbox" name="selected_receipt_ids" value="{{ receipt.id }}" aria-label="영수증 {{ receipt.id }} 선택">
                     </td>
-                    <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
                     <td>
-                        {% if receipt.processing_status == 'completed' %}
-                            <span class="status-pill status-completed">완료</span>
-                        {% elif receipt.processing_status == 'processing' %}
-                            <span class="status-pill status-processing">처리중</span>
-                        {% elif receipt.processing_status == 'failed' %}
-                            <span class="status-pill status-failed">실패</span>
-                        {% else %}
-                            <span class="status-pill status-pending">대기중</span>
-                        {% endif %}
+                        <div class="receipt-primary">
+                            <strong>영수증 #{{ receipt.id }}</strong>
+                            <div class="receipt-subline">
+                                <span>업로드 {{ receipt.uploaded_at|date:"Y-m-d H:i" }}</span>
+                                {% if receipt.processing_started_at %}<span>시작 {{ receipt.processing_started_at|date:"H:i" }}</span>{% endif %}
+                            </div>
+                            {% if receipt.processing_status == 'failed' %}
+                                <p class="receipt-preview error">{{ receipt.processing_error|default:"오류 메시지가 없습니다."|truncatechars:100 }}</p>
+                            {% elif receipt.processing_status == 'completed' and receipt.extracted_text %}
+                                <p class="receipt-preview">{{ receipt.extracted_text|truncatechars:100 }}</p>
+                            {% elif receipt.processing_status == 'processing' %}
+                                <p class="receipt-preview">OCR 처리 중입니다. 상태 API가 변경되면 목록이 자동으로 새로고침됩니다.</p>
+                            {% else %}
+                                <p class="receipt-preview">업로드가 완료되었고 작업 큐에서 처리를 기다리고 있습니다.</p>
+                            {% endif %}
+                        </div>
                     </td>
-                    <td>{{ receipt.processing_attempts }}</td>
+                    <td class="status-cell">
+                        <div class="status-stack">
+                            <div>
+                                {% if receipt.processing_status == 'completed' %}
+                                    <span class="status-pill status-completed">완료</span>
+                                {% elif receipt.processing_status == 'processing' %}
+                                    <span class="status-pill status-processing">처리중</span>
+                                {% elif receipt.processing_status == 'failed' %}
+                                    <span class="status-pill status-failed">실패</span>
+                                {% else %}
+                                    <span class="status-pill status-pending">대기중</span>
+                                {% endif %}
+                            </div>
+                            <div class="status-note">
+                                {% if receipt.processing_status == 'failed' %}
+                                    {{ receipt.get_processing_error_code_display }}
+                                {% elif receipt.processing_status == 'completed' %}
+                                    OCR과 품목 파싱이 완료된 상태입니다.
+                                {% elif receipt.processing_status == 'processing' %}
+                                    현재 워커에서 OCR 처리 흐름을 진행하고 있습니다.
+                                {% else %}
+                                    아직 워커가 작업을 가져가기 전 상태입니다.
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
                     <td>
-                        {% if receipt.processing_duration_ms %}
-                            {{ receipt.processing_duration_ms }} ms
-                        {% else %}
-                            -
-                        {% endif %}
+                        <div class="signal-grid">
+                            <div class="signal-chip{% if receipt.processing_status == 'failed' %} danger{% elif receipt.processing_status == 'pending' %} warn{% endif %}">
+                                <span>처리 시도</span>
+                                <strong>{{ receipt.processing_attempts }}회</strong>
+                            </div>
+                            <div class="signal-chip">
+                                <span>처리 시간</span>
+                                <strong>{% if receipt.processing_duration_ms %}{{ receipt.processing_duration_ms }} ms{% else %}-{% endif %}</strong>
+                            </div>
+                            <div class="signal-chip">
+                                <span>상품 개수</span>
+                                <strong>{{ receipt.items.count }}개</strong>
+                            </div>
+                        </div>
                     </td>
-                    <td>{{ receipt.items.count }}</td>
                     <td>
                         <div class="actions">
                             <a href="{% url 'receipt-detail' receipt.id %}">상세보기</a>
